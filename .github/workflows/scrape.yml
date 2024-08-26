@@ -1,4 +1,4 @@
-name: Weather Data Automation
+name: Scrape
 
 on:
   pull_request:

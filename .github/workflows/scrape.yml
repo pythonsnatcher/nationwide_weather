@@ -5,7 +5,7 @@ on:
     types:
       - opened
   schedule:
-  - cron: '*/10 * * * *'  # Schedule to run every 10 minutes
+  - cron: '*/48 * * * *'  # Schedule to run every 10 minutes
 
   workflow_dispatch:  # Allows manual triggering
 

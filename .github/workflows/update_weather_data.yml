@@ -44,7 +44,7 @@ jobs:
     - name: Run the weather data update script
       run: |
         echo "Starting Python script execution."
-        python update.py
+        python scripts/update.py
         echo "Python script execution completed."
 
     # Debug step to check if database exists after running script

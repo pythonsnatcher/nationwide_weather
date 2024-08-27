@@ -21,7 +21,7 @@ ui <- fluidPage(
              sidebarLayout(
                sidebarPanel(
                  selectInput("location", "Select Location:", choices = NULL),
-                 
+                 selectInput("numRows", "Number of Rows to Display:", choices = c(10, 20, 50, 100), selected = 10),
                  leafletOutput("locationMap")  # Map UI output placed in the sidebar panel
                ),
                mainPanel(
@@ -106,7 +106,7 @@ server <- function(input, output, session) {
       ) %>%
       setView(
         lng = selected_location$longitude, 
-       lat = selected_location$latitude, 
+        lat = selected_location$latitude, 
         zoom = 6
       )
   }
@@ -141,7 +141,8 @@ server <- function(input, output, session) {
       inner_join(locations, by = "location_id") %>%
       filter(name == input$location) %>%
       arrange(desc(time_of_search)) %>%
-      head(50)
+      head(as.numeric(input$numRows))  # Use the number of rows from the dropdown menu
+    
     
     # Show the filtered data in a table
     if (nrow(filtered_data) > 0) {

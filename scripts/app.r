@@ -22,7 +22,7 @@ ui <- fluidPage(
                  selectInput("location", "Select Location:", choices = NULL)
                ),
                mainPanel(
-                 htmlOutput("filteredWeatherData")  # Updated to show filtered weather data
+                 htmlOutput("filteredWeatherData")
                )
              )),
     
@@ -33,7 +33,7 @@ ui <- fluidPage(
     
     tabPanel("Data Overview", 
              mainPanel(
-               htmlOutput("dataTypesOverview")  # Section for data types overview
+               htmlOutput("dataTypesOverview")
              )),
     
     tabPanel("Visualizations", 
@@ -43,11 +43,7 @@ ui <- fluidPage(
                  selectInput("graphType", "Select Graph Type:", choices = c("All Graphs", "High Temperature Histogram", "Wind Speed Histogram", "Current Temperature Time Series"))
                ),
                mainPanel(
-                 # Conditional plot rendering based on selection
-                 plotOutput("selectedGraph"),
-                 plotOutput("highTempHistogram", height = "400px"),
-                 plotOutput("windSpeedHistogram", height = "400px"),
-                 plotOutput("timeSeriesPlot", height = "400px")
+                 uiOutput("graphUI")
                )
              ))
   )
@@ -65,6 +61,25 @@ server <- function(input, output, session) {
     updateSelectInput(session, "location", choices = locations$name)
     updateSelectInput(session, "graphLocation", choices = locations$name)
   })
+  
+  # Helper function to clean weather data
+  cleanWeatherData <- function(weather_reports) {
+    weather_reports %>%
+      mutate(
+        high_temperature = as.numeric(gsub("[^0-9.]", "", as.character(high_temperature))),
+        wind_speed = suppressWarnings(as.numeric(gsub("[^0-9.]", "", as.character(wind_speed)))),
+        current_temperature = suppressWarnings(as.numeric(gsub("[^0-9.]", "", as.character(current_temperature)))),
+        time_of_search = as.POSIXct(time_of_search, format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+      )
+  }
+  
+  # Helper function to filter data by location
+  filterDataByLocation <- function(weather_reports, location, con) {
+    locations <- dbGetQuery(con, "SELECT * FROM Locations")
+    weather_reports %>%
+      inner_join(locations, by = "location_id") %>%
+      filter(name == location)
+  }
   
   # Render the head of the weather data filtered by selected location
   output$filteredWeatherData <- renderUI({
@@ -96,65 +111,110 @@ server <- function(input, output, session) {
     }
   })
   
-  # Function to render the selected graph at the top
-  output$selectedGraph <- renderPlot({
+  # Render Foreign Key Relationships
+  output$dbRelationships <- renderUI({
+    # Get foreign key relationships for each table
+    tables <- dbListTables(con)
+    fk_relationships <- lapply(tables, function(table) {
+      dbGetQuery(con, paste("PRAGMA foreign_key_list(", table, ");", sep = ""))
+    })
+    names(fk_relationships) <- tables
+    
+    # Create a data frame to store relationships
+    relationship_data <- do.call(rbind, lapply(names(fk_relationships), function(table) {
+      df <- fk_relationships[[table]]
+      if (nrow(df) > 0) {
+        data.frame(
+          Table = table,
+          FK_Column = df$from,
+          Referenced_Table = df$table,
+          Referenced_Column = df$to,
+          stringsAsFactors = FALSE
+        )
+      } else {
+        NULL
+      }
+    }))
+    
+    HTML(
+      kable(relationship_data, "html", caption = "Foreign Key Relationships", escape = FALSE) %>%
+        kable_styling(full_width = FALSE, position = "center") %>%
+        column_spec(1, bold = TRUE, color = "black") %>%
+        column_spec(3, bold = TRUE, color = "black") %>%
+        column_spec(2, color = "blue") %>%
+        column_spec(4, color = "blue") %>%
+        row_spec(0, background = "#f2f2f2")
+    )
+  })
+  
+  # Render Data Types Overview
+  output$dataTypesOverview <- renderUI({
+    # Load all data tables with a limit of 1 row to get schema
+    tables <- c("WeatherReports", "PollutionLevels", "PollenLevels", "UVIndexLevels", "WindDirections", "Locations", "VisibilityLevels", "WeatherConditions")
+    
+    # Collect data types from each table
+    data_types_list <- lapply(tables, function(table) {
+      df <- dbGetQuery(con, paste("SELECT * FROM", table, "LIMIT 1"))
+      data.frame(Column = names(df), Data_Type = sapply(df, class), stringsAsFactors = FALSE)
+    })
+    
+    # Combine into a single output
+    output_html <- ""
+    for (i in seq_along(tables)) {
+      table <- tables[i]
+      data_types_df <- data_types_list[[i]]
+      
+      output_html <- paste0(output_html,
+                            HTML(
+                              kable(data_types_df, "html", caption = paste("Data Types for", table), escape = FALSE) %>%
+                                kable_styling(full_width = FALSE, position = "center") %>%
+                                column_spec(1, bold = TRUE, color = "black") %>%
+                                column_spec(2, color = "blue") %>%
+                                row_spec(0, background = "#f2f2f2")
+                            )
+      )
+    }
+    
+    HTML(output_html)
+  })
+  
+  # Render the selected graph
+  output$graphUI <- renderUI({
     req(input$graphLocation)
     
-    # Render the graph based on user selection
-    if (input$graphType == "High Temperature Histogram") {
-      renderHighTempHistogram()
+    # Conditionally render the selected graph type
+    if (input$graphType == "All Graphs") {
+      tagList(
+        plotOutput("highTempHistogram"),
+        plotOutput("windSpeedHistogram"),
+        plotOutput("timeSeriesPlot")
+      )
+    } else if (input$graphType == "High Temperature Histogram") {
+      plotOutput("highTempHistogram")
     } else if (input$graphType == "Wind Speed Histogram") {
-      renderWindSpeedHistogram()
+      plotOutput("windSpeedHistogram")
     } else if (input$graphType == "Current Temperature Time Series") {
-      renderTimeSeriesPlot()
+      plotOutput("timeSeriesPlot")
     }
   })
   
-  # Render the high temperature histogram at its default location
+  # Render the High Temperature Histogram
   output$highTempHistogram <- renderPlot({
     req(input$graphLocation)
-    
-    if (input$graphType == "All Graphs") {
-      renderHighTempHistogram()
-    }
+    renderHighTempHistogram()
   })
   
-  # Render the wind speed histogram at its default location
+  # Render the Wind Speed Histogram
   output$windSpeedHistogram <- renderPlot({
     req(input$graphLocation)
-    
-    if (input$graphType == "All Graphs") {
-      renderWindSpeedHistogram()
-    }
+    renderWindSpeedHistogram()
   })
   
-  # Render the current temperature time series plot at its default location
+  # Render the Current Temperature Time Series Plot
   output$timeSeriesPlot <- renderPlot({
     req(input$graphLocation)
-    
-    if (input$graphType == "All Graphs") {
-      renderTimeSeriesPlot()
-    }
+    renderTimeSeriesPlot()
   })
-  
-  # Helper function to clean weather data
-  cleanWeatherData <- function(weather_reports) {
-    weather_reports %>%
-      mutate(
-        high_temperature = as.numeric(gsub("[^0-9.]", "", as.character(high_temperature))),
-        wind_speed = suppressWarnings(as.numeric(gsub("[^0-9.]", "", as.character(wind_speed)))),
-        current_temperature = suppressWarnings(as.numeric(gsub("[^0-9.]", "", as.character(current_temperature)))),
-        time_of_search = as.POSIXct(time_of_search, format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
-      )
-  }
-  
-  # Helper function to filter data by location
-  filterDataByLocation <- function(weather_reports, location, con) {
-    locations <- dbGetQuery(con, "SELECT * FROM Locations")
-    weather_reports %>%
-      inner_join(locations, by = "location_id") %>%
-      filter(name == location)
-  }
   
   # Function to render High Temperature Histogram
   renderHighTempHistogram <- function() {

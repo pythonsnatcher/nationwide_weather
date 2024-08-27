@@ -5,6 +5,7 @@ library(RSQLite)
 library(dplyr)
 library(knitr)
 library(kableExtra)
+library(ggplot2)
 
 # Define the path to your SQLite database
 db_file_path <- "/Users/snatch./Desktop/nationwide_weather.db"
@@ -30,6 +31,17 @@ ui <- fluidPage(
     tabPanel("Data Overview", 
              mainPanel(
                htmlOutput("dataTypesOverview")  # Section for data types overview
+             )),
+    tabPanel("Visualizations", 
+             sidebarLayout(
+               sidebarPanel(
+                 selectInput("graphLocation", "Select Location for Graphs:", choices = NULL)
+               ),
+               mainPanel(
+                 plotOutput("highTempHistogram"),
+                 plotOutput("windSpeedHistogram"),
+                 plotOutput("timeSeriesPlot")
+               )
              ))
   )
 )
@@ -40,10 +52,11 @@ server <- function(input, output, session) {
   # Establish a connection to the SQLite database
   con <- dbConnect(RSQLite::SQLite(), dbname = db_file_path)
   
-  # Load location options for the dropdown
+  # Load location options for the dropdowns
   observe({
     locations <- dbGetQuery(con, "SELECT DISTINCT name FROM Locations")
     updateSelectInput(session, "location", choices = locations$name)
+    updateSelectInput(session, "graphLocation", choices = locations$name)
   })
   
   # Render the head of the weather data filtered by selected location
@@ -54,18 +67,9 @@ server <- function(input, output, session) {
     weather_reports <- dbGetQuery(con, "SELECT * FROM WeatherReports")
     locations <- dbGetQuery(con, "SELECT * FROM Locations")
     
-    # Debug: Print the first few rows of the weather_reports to check data types
-    print(head(weather_reports))
-    
     # Convert time_of_search to POSIXct
     if ("time_of_search" %in% colnames(weather_reports)) {
-      # Check for the correct format
       weather_reports$time_of_search <- as.POSIXct(weather_reports$time_of_search, format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
-      
-      # Debug: Print the structure of the time_of_search column to confirm conversion
-      print(str(weather_reports$time_of_search))
-    } else {
-      print("time_of_search column not found")
     }
     
     # Clean numeric columns
@@ -112,8 +116,6 @@ server <- function(input, output, session) {
       filter(name == input$location) %>%
       arrange(desc(time_of_search)) %>%
       head(50)
-    
-    
     
     # Show the first few rows of the filtered data
     if (nrow(filtered_data) > 0) {
@@ -163,7 +165,6 @@ server <- function(input, output, session) {
     HTML(output_html)
   })
   
-  
   # Render the foreign key relationships
   output$dbRelationships <- renderUI({
     # Get foreign key relationships for each table
@@ -198,6 +199,83 @@ server <- function(input, output, session) {
         column_spec(4, color = "blue") %>%
         row_spec(0, background = "#f2f2f2")
     )
+  })
+  
+  # Render histograms for selected location
+  output$highTempHistogram <- renderPlot({
+    req(input$graphLocation)  # Ensure a location is selected
+    
+    # Load weather data for graph
+    weather_reports <- dbGetQuery(con, "SELECT * FROM WeatherReports")
+    
+    # Clean numeric columns
+    weather_reports <- weather_reports %>%
+      mutate(
+        high_temperature = as.numeric(gsub("[^0-9.]", "", as.character(high_temperature))),
+        wind_speed = suppressWarnings(as.numeric(gsub("[^0-9.]", "", as.character(wind_speed))))
+      )
+    
+    # Filter data by selected location
+    filtered_data <- weather_reports %>%
+      inner_join(dbGetQuery(con, "SELECT * FROM Locations"), by = "location_id") %>%
+      filter(name == input$graphLocation)
+    
+    # Plot histogram for high temperatures
+    ggplot(filtered_data, aes(x = high_temperature)) + 
+      geom_histogram(binwidth = 2, fill = "blue", color = "white") +
+      labs(title = "Distribution of High Temperatures", x = "High Temperature (°C)", y = "Frequency") +
+      theme_minimal()
+  })
+  
+  # Render time series plot for current temperature
+  output$timeSeriesPlot <- renderPlot({
+    req(input$graphLocation)  # Ensure a location is selected
+    
+    # Load weather data for graph
+    weather_reports <- dbGetQuery(con, "SELECT * FROM WeatherReports")
+    
+    # Clean numeric columns
+    weather_reports <- weather_reports %>%
+      mutate(
+        current_temperature = suppressWarnings(as.numeric(gsub("[^0-9.]", "", as.character(current_temperature)))),
+        time_of_search = as.POSIXct(time_of_search, format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+      )
+    
+    # Filter data by selected location
+    filtered_data <- weather_reports %>%
+      inner_join(dbGetQuery(con, "SELECT * FROM Locations"), by = "location_id") %>%
+      filter(name == input$graphLocation)
+    
+    # Plot time series for current temperature
+    ggplot(filtered_data, aes(x = time_of_search, y = current_temperature)) +
+      geom_line(color = "blue") +
+      labs(title = "Current Temperature Over Time", x = "Time", y = "Current Temperature (°C)") +
+      theme_minimal()
+  })
+  
+  # Render histogram for wind speed
+  output$windSpeedHistogram <- renderPlot({
+    req(input$graphLocation)  # Ensure a location is selected
+    
+    # Load weather data for graph
+    weather_reports <- dbGetQuery(con, "SELECT * FROM WeatherReports")
+    
+    # Clean numeric columns
+    weather_reports <- weather_reports %>%
+      mutate(
+        wind_speed = suppressWarnings(as.numeric(gsub("[^0-9.]", "", as.character(wind_speed))))
+      )
+    
+    # Filter data by selected location
+    filtered_data <- weather_reports %>%
+      inner_join(dbGetQuery(con, "SELECT * FROM Locations"), by = "location_id") %>%
+      filter(name == input$graphLocation)
+    
+    # Plot histogram for wind speed
+    ggplot(filtered_data, aes(x = wind_speed)) + 
+      geom_histogram(binwidth = 1, fill = "orange", color = "white") +
+      labs(title = "Distribution of Wind Speed", x = "Wind Speed (km/h)", y = "Frequency") +
+      theme_minimal()
   })
   
   # Disconnect from the database when the app stops

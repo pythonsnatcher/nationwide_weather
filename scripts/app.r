@@ -6,6 +6,7 @@ library(dplyr)
 library(knitr)
 library(kableExtra)
 library(ggplot2)
+library(leaflet)
 
 # Define the path to your SQLite database
 db_file_path <- "/Users/snatch./Desktop/nationwide_weather.db"
@@ -19,7 +20,9 @@ ui <- fluidPage(
     tabPanel("Head", 
              sidebarLayout(
                sidebarPanel(
-                 selectInput("location", "Select Location:", choices = NULL)
+                 selectInput("location", "Select Location:", choices = NULL),
+                 
+                 leafletOutput("locationMap")  # Map UI output placed in the sidebar panel
                ),
                mainPanel(
                  htmlOutput("filteredWeatherData")
@@ -40,7 +43,8 @@ ui <- fluidPage(
              sidebarLayout(
                sidebarPanel(
                  selectInput("graphLocation", "Select Location for Graphs:", choices = NULL),
-                 selectInput("graphType", "Select Graph Type:", choices = c("All Graphs", "High Temperature Histogram", "Wind Speed Histogram", "Current Temperature Time Series"))
+                 selectInput("graphType", "Select Graph Type:", choices = c("All Graphs", "High Temperature Histogram", "Wind Speed Histogram", "Current Temperature Time Series")),
+                 leafletOutput("visualizationsMap")  # Map UI output in the sidebar panel
                ),
                mainPanel(
                  uiOutput("graphUI")
@@ -69,6 +73,11 @@ server <- function(input, output, session) {
         high_temperature = as.numeric(gsub("[^0-9.]", "", as.character(high_temperature))),
         wind_speed = suppressWarnings(as.numeric(gsub("[^0-9.]", "", as.character(wind_speed)))),
         current_temperature = suppressWarnings(as.numeric(gsub("[^0-9.]", "", as.character(current_temperature)))),
+        low_temperature = suppressWarnings(as.numeric(gsub("[^0-9.]", "", as.character(low_temperature)))),
+        low_tide_morning_height = suppressWarnings(as.numeric(gsub("[^0-9.]", "", as.character(low_tide_morning_height)))),
+        high_tide_morning_height = suppressWarnings(as.numeric(gsub("[^0-9.]", "", as.character(high_tide_morning_height)))),
+        low_tide_evening_height = suppressWarnings(as.numeric(gsub("[^0-9.]", "", as.character(low_tide_evening_height)))),
+        high_tide_evening_height = suppressWarnings(as.numeric(gsub("[^0-9.]", "", as.character(high_tide_evening_height)))),
         time_of_search = as.POSIXct(time_of_search, format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
       )
   }
@@ -80,6 +89,41 @@ server <- function(input, output, session) {
       inner_join(locations, by = "location_id") %>%
       filter(name == location)
   }
+  
+  # Render the interactive map
+  renderMap <- function(location) {
+    req(location)  # Ensure a location is selected
+    
+    # Load locations data
+    locations <- dbGetQuery(con, "SELECT * FROM Locations")
+    selected_location <- locations %>% filter(name == location)
+    
+    # Render the leaflet map
+    leaflet(data = selected_location) %>%
+      addTiles() %>%
+      addMarkers(
+        lng = ~longitude, lat = ~latitude, popup = ~name
+      ) %>%
+      setView(
+        lng = selected_location$longitude, 
+       lat = selected_location$latitude, 
+        zoom = 6
+      )
+  }
+  
+  # Render the map in the "Head" tab
+  output$locationMap <- renderLeaflet({
+    if (!is.null(input$location)) {
+      renderMap(input$location)
+    }
+  })
+  
+  # Render the map in the "Visualizations" tab
+  output$visualizationsMap <- renderLeaflet({
+    if (!is.null(input$graphLocation)) {
+      renderMap(input$graphLocation)
+    }
+  })
   
   # Render the head of the weather data filtered by selected location
   output$filteredWeatherData <- renderUI({
@@ -190,79 +234,65 @@ server <- function(input, output, session) {
         plotOutput("timeSeriesPlot")
       )
     } else if (input$graphType == "High Temperature Histogram") {
-      plotOutput("highTempHistogram")
+      tagList(
+        plotOutput("highTempHistogram")
+      )
     } else if (input$graphType == "Wind Speed Histogram") {
-      plotOutput("windSpeedHistogram")
+      tagList(
+        plotOutput("windSpeedHistogram")
+      )
     } else if (input$graphType == "Current Temperature Time Series") {
-      plotOutput("timeSeriesPlot")
+      tagList(
+        plotOutput("timeSeriesPlot")
+      )
     }
   })
   
-  # Render the High Temperature Histogram
+  # Generate graphs
   output$highTempHistogram <- renderPlot({
     req(input$graphLocation)
-    renderHighTempHistogram()
+    
+    weather_reports <- dbGetQuery(con, "SELECT * FROM WeatherReports")
+    weather_reports <- cleanWeatherData(weather_reports)
+    
+    filtered_data <- filterDataByLocation(weather_reports, input$graphLocation, con)
+    
+    ggplot(filtered_data, aes(x = high_temperature)) +
+      geom_histogram(binwidth = 1, fill = "blue", color = "black") +
+      labs(title = paste("High Temperature Histogram for", input$graphLocation),
+           x = "High Temperature (°C)",
+           y = "Frequency")
   })
   
-  # Render the Wind Speed Histogram
   output$windSpeedHistogram <- renderPlot({
     req(input$graphLocation)
-    renderWindSpeedHistogram()
+    
+    weather_reports <- dbGetQuery(con, "SELECT * FROM WeatherReports")
+    weather_reports <- cleanWeatherData(weather_reports)
+    
+    filtered_data <- filterDataByLocation(weather_reports, input$graphLocation, con)
+    
+    ggplot(filtered_data, aes(x = wind_speed)) +
+      geom_histogram(binwidth = 1, fill = "green", color = "black") +
+      labs(title = paste("Wind Speed Histogram for", input$graphLocation),
+           x = "Wind Speed (km/h)",
+           y = "Frequency")
   })
   
-  # Render the Current Temperature Time Series Plot
   output$timeSeriesPlot <- renderPlot({
     req(input$graphLocation)
-    renderTimeSeriesPlot()
-  })
-  
-  # Function to render High Temperature Histogram
-  renderHighTempHistogram <- function() {
-    # Load weather data for graph
+    
     weather_reports <- dbGetQuery(con, "SELECT * FROM WeatherReports")
     weather_reports <- cleanWeatherData(weather_reports)
     
-    # Filter data by selected location
     filtered_data <- filterDataByLocation(weather_reports, input$graphLocation, con)
     
-    # Plot histogram for high temperatures
-    ggplot(filtered_data, aes(x = high_temperature)) + 
-      geom_histogram(binwidth = 2, fill = "blue", color = "white") +
-      labs(title = "Distribution of High Temperatures", x = "High Temperature (°C)", y = "Frequency") +
-      theme_minimal()
-  }
-  
-  # Function to render Wind Speed Histogram
-  renderWindSpeedHistogram <- function() {
-    # Load weather data for graph
-    weather_reports <- dbGetQuery(con, "SELECT * FROM WeatherReports")
-    weather_reports <- cleanWeatherData(weather_reports)
-    
-    # Filter data by selected location
-    filtered_data <- filterDataByLocation(weather_reports, input$graphLocation, con)
-    
-    # Plot histogram for wind speed
-    ggplot(filtered_data, aes(x = wind_speed)) + 
-      geom_histogram(binwidth = 1, fill = "orange", color = "white") +
-      labs(title = "Distribution of Wind Speed", x = "Wind Speed (km/h)", y = "Frequency") +
-      theme_minimal()
-  }
-  
-  # Function to render Time Series Plot
-  renderTimeSeriesPlot <- function() {
-    # Load weather data for graph
-    weather_reports <- dbGetQuery(con, "SELECT * FROM WeatherReports")
-    weather_reports <- cleanWeatherData(weather_reports)
-    
-    # Filter data by selected location
-    filtered_data <- filterDataByLocation(weather_reports, input$graphLocation, con)
-    
-    # Plot time series for current temperature
     ggplot(filtered_data, aes(x = time_of_search, y = current_temperature)) +
-      geom_line(color = "blue") +
-      labs(title = "Current Temperature Over Time", x = "Time", y = "Current Temperature (°C)") +
-      theme_minimal()
-  }
+      geom_line() +
+      labs(title = paste("Current Temperature Time Series for", input$graphLocation),
+           x = "Time",
+           y = "Current Temperature (°C)")
+  })
   
   # Disconnect from the database when the app stops
   onStop(function() {

@@ -1,73 +1,73 @@
-name: Update Weather Data
+# name: Update Weather Data
 
-on:
-  schedule:
-    - cron: '* * */4 * *' # This runs the action daily at midnight UTC
-  workflow_dispatch: # Allows manual triggering
+# on:
+#   schedule:
+#     - cron: '* * */4 * *' # This runs the action daily at midnight UTC
+#   workflow_dispatch: # Allows manual triggering
 
-jobs:
-  update-database:
-    runs-on: ubuntu-latest
+# jobs:
+#   update-database:
+#     runs-on: ubuntu-latest
 
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+#     steps:
+#     - name: Checkout repository
+#       uses: actions/checkout@v2
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.x'
+#     - name: Set up Python
+#       uses: actions/setup-python@v2
+#       with:
+#         python-version: '3.x'
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install gspread oauth2client pandas
+#     - name: Install dependencies
+#       run: |
+#         python -m pip install --upgrade pip
+#         pip install gspread oauth2client pandas
 
-    # Debug step to log the current working directory
-    - name: Print working directory
-      run: |
-        echo "Current working directory:"
-        pwd
-        echo "List of files:"
-        ls -la
+#     # Debug step to log the current working directory
+#     - name: Print working directory
+#       run: |
+#         echo "Current working directory:"
+#         pwd
+#         echo "List of files:"
+#         ls -la
 
-    # Debug step to check if database exists before running script
-    - name: Check if database exists before running the script
-      run: |
-        if [ -f "data/nationwide_weather.db" ]; then
-          echo "Database exists before script execution."
-        else
-          echo "Database does NOT exist before script execution."
-        fi
+#     # Debug step to check if database exists before running script
+#     - name: Check if database exists before running the script
+#       run: |
+#         if [ -f "data/nationwide_weather.db" ]; then
+#           echo "Database exists before script execution."
+#         else
+#           echo "Database does NOT exist before script execution."
+#         fi
 
-    # Run the weather data update script with additional logging
-    - name: Run the weather data update script
-      run: |
-        echo "Starting Python script execution."
-        python scripts/update.py
-        echo "Python script execution completed."
+#     # Run the weather data update script with additional logging
+#     - name: Run the weather data update script
+#       run: |
+#         echo "Starting Python script execution."
+#         python scripts/update.py
+#         echo "Python script execution completed."
 
-    # Debug step to check if database exists after running script
-    - name: Check if database exists after running the script
-      run: |
-        if [ -f "data/nationwide_weather.db" ]; then
-          echo "Database exists after script execution."
-        else
-          echo "Database does NOT exist after script execution."
-        fi
+#     # Debug step to check if database exists after running script
+#     - name: Check if database exists after running the script
+#       run: |
+#         if [ -f "data/nationwide_weather.db" ]; then
+#           echo "Database exists after script execution."
+#         else
+#           echo "Database does NOT exist after script execution."
+#         fi
 
-    # Commit and push the updated database
-    - name: Commit and push updated database
-      run: |
-        git config --global user.name 'github-actions'
-        git config --global user.email 'github-actions@github.com'
-        git add data/nationwide_weather.db
-        git commit -m 'Update database with new weather data'
-        git push
+#     # Commit and push the updated database
+#     - name: Commit and push updated database
+#       run: |
+#         git config --global user.name 'github-actions'
+#         git config --global user.email 'github-actions@github.com'
+#         git add data/nationwide_weather.db
+#         git commit -m 'Update database with new weather data'
+#         git push
 
-    # Optionally upload database as an artifact for inspection
-    - name: Upload database artifact
-      uses: actions/upload-artifact@v2
-      with:
-        name: nationwide_weather.db
-        path: data/nationwide_weather.db
+#     # Optionally upload database as an artifact for inspection
+#     - name: Upload database artifact
+#       uses: actions/upload-artifact@v2
+#       with:
+#         name: nationwide_weather.db
+#         path: data/nationwide_weather.db

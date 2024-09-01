@@ -1,6 +1,11 @@
 .
 ├── DIRECTORY_STRUCTURE.md
+├── data
+│   ├── nationwide_weather.db
+│   └── placeholder.py
 └── scripts
-    └── main.py
+    ├── app.r
+    ├── main.py
+    └── update.py
 
-1 directory, 2 files
+2 directories, 6 files

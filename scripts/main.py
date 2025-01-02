@@ -276,12 +276,31 @@ def write_to_google_sheets(data, sheet_name, headers):
     # print("Cleared existing content in worksheet")
 
     # Check if headers are already present
+
     existing_values = worksheet.get_all_values()
-    if not existing_values or existing_values[0] != headers:
+    # If sheet has more than 1000 rows
+    if len(existing_values) > 1000:
+        print(f"Sheet {sheet_name} has exceeded 1000 rows. Clearing and preserving headers...")
+        worksheet.clear()
+        worksheet.append_row(headers)
+        print("Headers rewritten successfully")
+    elif not existing_values or existing_values[0] != headers:
         worksheet.append_row(headers)
         print(f"Appended headers: {headers}")
     else:
         print("Headers already exist; not appending headers.")
+
+
+    # -------------------------------------------------------------
+    # OLD CODE THAT DOES WORK BUT DOES NOT DELETE OLD CONTENT ONCE IT HAS REACHED A LIMIT
+    # existing_values = worksheet.get_all_values()
+    # if not existing_values or existing_values[0] != headers:
+    #     worksheet.append_row(headers)
+    #     print(f"Appended headers: {headers}")
+    # else:
+    #     print("Headers already exist; not appending headers.")
+    # -------------------------------------------------------------
+        
 
     # Append data
     for row in data:

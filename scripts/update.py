@@ -2,9 +2,18 @@ import gspread
 import pandas as pd
 import sqlite3
 from oauth2client.service_account import ServiceAccountCredentials
-import json  # Add this import
+import json  
 import os
-import os
+import sys
+
+
+
+
+
+print(f"Python version: {sys.version}")
+print(f"Working directory: {os.getcwd()}")
+print(f"Available environment variables: {os.environ}")
+
 
 
 

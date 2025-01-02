@@ -42,6 +42,8 @@ jobs:
 
     # Run the weather data update script with additional logging
     - name: Run the weather data update script
+      env:
+        GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
       run: |
         echo "Starting Python script execution."
         python scripts/update.py

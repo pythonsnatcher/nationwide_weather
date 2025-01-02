@@ -7,6 +7,9 @@ import os
 from datetime import datetime
 import pytz
 import time
+import os
+import json
+
 
 # get today's date
 today_date = datetime.now().strftime('%Y-%m-%d')
@@ -241,21 +244,20 @@ def write_to_google_sheets(data, sheet_name, headers):
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 
     # JSON credentials directly in the script
-    creds_dict = {
-          "type": "service_account",
-          "project_id": "weather-data-429210",
-          "private_key_id": "57f949e51c1bc58946026deb253a45f5d2f7aaa6",
-          "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQCVKqzdsrIH7PwN\noAm4ta0bJi1xsRNvbciYlFOXWD0DDgOtnUIOnkWfec/vzubr1+2s1ml67vaL3WGB\nE8It2EOoE5ctbiOBINV8VFhLbh+JLggISwvP5r/dV33VDNDEhb4M1t4Nh2oItfIT\nRP951Cbw9nkdJE0QKfzkvjWvwowW8osI4jelvUhQn2BfAhABguPa7p0kgHd67NJI\neLuPKvLr6tpTEAMbrGabYuarpQOjl7U1ABvbs68d+xCFpcU6ly5cUmZh1NM9YV1f\nItbCi7q/eqL5SbUNbsmDhNpev6oV2tzIXLaDrhd/2wBfhPBRgxQbO6ntTKFln9QA\n5DOQsYzTAgMBAAECggEAEs/9r+goM9UGOjcDgtwcJ4m6aYBKUd9SpouZD0P9ozOn\n8G7I30xuvhzVcLUeF9h1DTtCtP0LnbrJ3/GR/R4tSjajoQMm+dNzmT6PSX7AqMMO\nwvJUBwsJtOyiiLVuZEVJzBdn4eTre+Br1f+kXhpiNDmhhLSzU2U4Pnu5YZ/znbZq\ndr9q9Uy/+zM0axgjc+uysGd0XC5W/Y425ZZZ4jWca3zWgwRw/bDwnSR8yM0TsgtW\nBT5ZjoITA+UuWyUQ9q1O9VQzJdV0bDnkC6/J/Oj3KnN4W4P22yiHehDbsJX9H7fx\nAqh7OMQnLHWBRhi2GporJF/8UwqzBn42vL12FO8wQQKBgQDND0i0kLzxKs6RxeAc\ngb48+W9xd3j7Oi7IPm3UYqZvJJabdV5NYBxW6qKtZTYvgmzT4WsuW+lsvPmfAVYR\nJbFFlUtupnXom5G0zh3sYyhnyfyOPxW7Bxt7EXj+URmBFZ0D4gdBy1ggH1dN18AH\nxr8K8ELVbGlTcEJISM5cM13UuwKBgQC6OOQVNbezXYztNeuGg7e6SYpBffMcPZuV\nYaLZ2+FZ/kw2nG+ibBa98MS063B3Esjr9pHI91CiQDWybPSEL2G1UoNheMgHscNC\nzZtkIsFQSu/ZifVMBsHmlfbeHV9dj3fDrNfv/oTMiHgKDQ4+378b1oFgp31Rza6S\n2sTFPlsyyQKBgQDAt1SFHmHz5V8t8OGm6Oh5NZNe+AFjWlMNLl7Z87ynR6OjhrKR\n1XnM1cb9XtmF3PWaS4gHkanW3+NZZFAW3W21D5JM83Rsn4hYfD3zI12d7V7F8NPj\nadKR3uHvYRivEDj4pTxcwVaZGdta9SEsLcTt6s9k9PYnzKD+fi4yyLOucQKBgQCd\nEktfkHWn9qpdknNcfFFF8a2J3CBom5ZVg4sG0y3a6GGEVqLaju0HvMNODqBH7zJF\nxS3mIqSClkI0gy4jKIvzkut6FZQy2T9nY2FELwR7Ixn3lSOvwqteQPN/GatMkSxl\nga6JoVaF5j3JzIVNhw/8/QsXaW6Mxz4OZDRAYn4t8QKBgQCLarqOXPSkiKYoGz6u\nSDpK97DfCjzaexGIjY0207c5YOlNriwXYCGdKCsQ9IDzFn+D7Auj1CxAroavr/eB\nkzHpd5xR2yj55YxNqGtpevlaOp/8/TJMt3Y6ND3F9Ziiu8pksO7KIW0lJJdYa5k5\n7Nq1tMlvH7EzhghN9YxhARSK/g==\n-----END PRIVATE KEY-----\n",
-          "client_email": "weather-data@weather-data-429210.iam.gserviceaccount.com",
-          "client_id": "117847726458310784712",
-          "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-          "token_uri": "https://oauth2.googleapis.com/token",
-          "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-          "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/weather-data%40weather-data-429210.iam.gserviceaccount.com",
-          "universe_domain": "googleapis.com"
-        }
+    # creds_dict = {
+          
+    #     }
     # token updated jan 2025
 
+    # creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+    # print("Google Sheets API credentials loaded")
+
+    # Get credentials from environment variable
+    creds_json = os.environ.get('GOOGLE_CREDENTIALS')
+    if not creds_json:
+        raise ValueError("GOOGLE_CREDENTIALS environment variable not found")
+    
+    creds_dict = json.loads(creds_json)
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     print("Google Sheets API credentials loaded")
 
@@ -310,22 +312,22 @@ def get_sheet_name(location):
 def main():
     # Setup Google Sheets client
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds_dict = creds_dict = {
-          "type": "service_account",
-          "project_id": "weather-data-429210",
-          "private_key_id": "57f949e51c1bc58946026deb253a45f5d2f7aaa6",
-          "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQCVKqzdsrIH7PwN\noAm4ta0bJi1xsRNvbciYlFOXWD0DDgOtnUIOnkWfec/vzubr1+2s1ml67vaL3WGB\nE8It2EOoE5ctbiOBINV8VFhLbh+JLggISwvP5r/dV33VDNDEhb4M1t4Nh2oItfIT\nRP951Cbw9nkdJE0QKfzkvjWvwowW8osI4jelvUhQn2BfAhABguPa7p0kgHd67NJI\neLuPKvLr6tpTEAMbrGabYuarpQOjl7U1ABvbs68d+xCFpcU6ly5cUmZh1NM9YV1f\nItbCi7q/eqL5SbUNbsmDhNpev6oV2tzIXLaDrhd/2wBfhPBRgxQbO6ntTKFln9QA\n5DOQsYzTAgMBAAECggEAEs/9r+goM9UGOjcDgtwcJ4m6aYBKUd9SpouZD0P9ozOn\n8G7I30xuvhzVcLUeF9h1DTtCtP0LnbrJ3/GR/R4tSjajoQMm+dNzmT6PSX7AqMMO\nwvJUBwsJtOyiiLVuZEVJzBdn4eTre+Br1f+kXhpiNDmhhLSzU2U4Pnu5YZ/znbZq\ndr9q9Uy/+zM0axgjc+uysGd0XC5W/Y425ZZZ4jWca3zWgwRw/bDwnSR8yM0TsgtW\nBT5ZjoITA+UuWyUQ9q1O9VQzJdV0bDnkC6/J/Oj3KnN4W4P22yiHehDbsJX9H7fx\nAqh7OMQnLHWBRhi2GporJF/8UwqzBn42vL12FO8wQQKBgQDND0i0kLzxKs6RxeAc\ngb48+W9xd3j7Oi7IPm3UYqZvJJabdV5NYBxW6qKtZTYvgmzT4WsuW+lsvPmfAVYR\nJbFFlUtupnXom5G0zh3sYyhnyfyOPxW7Bxt7EXj+URmBFZ0D4gdBy1ggH1dN18AH\nxr8K8ELVbGlTcEJISM5cM13UuwKBgQC6OOQVNbezXYztNeuGg7e6SYpBffMcPZuV\nYaLZ2+FZ/kw2nG+ibBa98MS063B3Esjr9pHI91CiQDWybPSEL2G1UoNheMgHscNC\nzZtkIsFQSu/ZifVMBsHmlfbeHV9dj3fDrNfv/oTMiHgKDQ4+378b1oFgp31Rza6S\n2sTFPlsyyQKBgQDAt1SFHmHz5V8t8OGm6Oh5NZNe+AFjWlMNLl7Z87ynR6OjhrKR\n1XnM1cb9XtmF3PWaS4gHkanW3+NZZFAW3W21D5JM83Rsn4hYfD3zI12d7V7F8NPj\nadKR3uHvYRivEDj4pTxcwVaZGdta9SEsLcTt6s9k9PYnzKD+fi4yyLOucQKBgQCd\nEktfkHWn9qpdknNcfFFF8a2J3CBom5ZVg4sG0y3a6GGEVqLaju0HvMNODqBH7zJF\nxS3mIqSClkI0gy4jKIvzkut6FZQy2T9nY2FELwR7Ixn3lSOvwqteQPN/GatMkSxl\nga6JoVaF5j3JzIVNhw/8/QsXaW6Mxz4OZDRAYn4t8QKBgQCLarqOXPSkiKYoGz6u\nSDpK97DfCjzaexGIjY0207c5YOlNriwXYCGdKCsQ9IDzFn+D7Auj1CxAroavr/eB\nkzHpd5xR2yj55YxNqGtpevlaOp/8/TJMt3Y6ND3F9Ziiu8pksO7KIW0lJJdYa5k5\n7Nq1tMlvH7EzhghN9YxhARSK/g==\n-----END PRIVATE KEY-----\n",
-          "client_email": "weather-data@weather-data-429210.iam.gserviceaccount.com",
-          "client_id": "117847726458310784712",
-          "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-          "token_uri": "https://oauth2.googleapis.com/token",
-          "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-          "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/weather-data%40weather-data-429210.iam.gserviceaccount.com",
-          "universe_domain": "googleapis.com"
-        }
-    # creds updated jan 2025
+    
+    # creds_dict = creds_dict = {
+         
+    #     }
+    # # creds updated jan 2025
 
     
+    # creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+    # print("Google Sheets API credentials loaded")
+
+    # Get credentials from environment variable
+    creds_json = os.environ.get('GOOGLE_CREDENTIALS')
+    if not creds_json:
+        raise ValueError("GOOGLE_CREDENTIALS environment variable not found")
+    
+    creds_dict = json.loads(creds_json)
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     print("Google Sheets API credentials loaded")
 

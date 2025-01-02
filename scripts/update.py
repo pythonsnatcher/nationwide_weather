@@ -3,6 +3,7 @@ import pandas as pd
 import sqlite3
 from oauth2client.service_account import ServiceAccountCredentials
 import json  # Add this import
+import os
 
 # Define the paths
 database_file_path = 'data/nationwide_weather.db'

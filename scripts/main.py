@@ -254,6 +254,7 @@ def write_to_google_sheets(data, sheet_name, headers):
           "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/weather-data%40weather-data-429210.iam.gserviceaccount.com",
           "universe_domain": "googleapis.com"
         }
+    # token updated jan 2025
 
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     print("Google Sheets API credentials loaded")

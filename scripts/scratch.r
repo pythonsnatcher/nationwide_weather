@@ -1,42 +1,76 @@
-
-# Set CRAN mirror to ensure the package installation can access CRAN
+# Set CRAN mirror and load essential packages
 options(repos = c(CRAN = "https://cran.rstudio.com"))
 
-# Check and install required libraries if missing
-required_packages <- c("shiny", "plotly", "dplyr", "leaflet", "shinyjs")
-
-# Install any missing packages
+# Check and install required packages
+required_packages <- c("shiny", "plotly", "dplyr", "leaflet", "shinyjs", "RSQLite")
 for (pkg in required_packages) {
   if (!requireNamespace(pkg, quietly = TRUE)) {
     install.packages(pkg)
   }
 }
+# Load libraries
 library(shiny)
 library(plotly)
 library(dplyr)
 library(leaflet)
-library(shinyjs)  # Added shinyjs for modal popup
+library(shinyjs)
+library(RSQLite)
 
+# Data loading function
+query_weather_data <- function() {
+  url <- "https://raw.githubusercontent.com/pythonsnatcher/nationwide_weather/5cce1ae87441d5fefdddb0e4d99b05ddde8d457a/data/nationwide_weather.db"
+  temp_db <- tempfile(fileext = ".db")
+  
+  tryCatch({
+    # Download and connect to the database
+    download.file(url, temp_db, mode = "wb")
+    con <- dbConnect(SQLite(), temp_db)
+    
+    # Query the weather data
+    df <- dbGetQuery(con, "SELECT 
+    wr.*,
+    wc.description AS weather_condition,
+    vl.description AS visibility_description,
+    loc.name AS location_name,
+    wd.description AS wind_direction_description,
+    uv.level AS uv_index_level,
+    pl.level AS pollen_level,
+    pol.level AS pollution_level
+FROM 
+    WeatherReports wr
+LEFT JOIN WeatherConditions wc ON wr.weather_condition_id = wc.weather_condition_id
+LEFT JOIN VisibilityLevels vl ON wr.visibility_id = vl.visibility_id
+LEFT JOIN Locations loc ON wr.location_id = loc.location_id
+LEFT JOIN WindDirections wd ON wr.wind_direction_id = wd.wind_direction_id
+LEFT JOIN UVIndexLevels uv ON wr.uv_index_id = uv.uv_index_id
+LEFT JOIN PollenLevels pl ON wr.pollen_id = pl.pollen_id
+LEFT JOIN PollutionLevels pol ON wr.pollution_id = pol.pollution_id
 
-# Source the data from data.R
-source("data.R")  # This loads the my_data data frame from data.R
+")
+    
+    # Clean up and return the data
+    dbDisconnect(con)
+    unlink(temp_db)
+    return(df)
+  }, error = function(e) {
+    # Clean up in case of errors
+    unlink(temp_db)
+    warning("Error loading data: ", e$message)
+    return(data.frame(Error = "Failed to load data"))
+  })
+}
 
-# Check if the 'my_data' is loaded correctly
-if (exists("my_data")) {
-  df <- my_data  # If the data is loaded from data.R, assign it to df
-} else {
-  df <- data.frame(Error = "Data not found. Please check data.R.")  # Handle error if data is not loaded
+# Load data from GitHub
+df <- query_weather_data()
+
+# Check if the data was loaded successfully
+if ("Error" %in% names(df)) {
+  stop("Failed to load data. Please check the GitHub database URL or connection.")
 }
 
 
 
-# Check and convert 'report_date' if it's numeric (e.g., Excel date format)
-if (is.numeric(df$report_date)) {
-  df$report_date <- as.Date(df$report_date, origin = "1900-01-01")
-} else {
-  df$report_date <- as.Date(df$report_date)
-}
-
+df$time_of_search <- as.POSIXct(df$time_of_search, format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
 # Add latitude and longitude to the data frame
 location_coords <- data.frame(
   location_name = c("London", "Birmingham", "Manchester", "Nottingham", "Leeds", "Liverpool", "Bristol", "Newcastle upon Tyne", "Southampton", "Brighton"),
@@ -99,8 +133,11 @@ ui <- fluidPage(
     sidebarPanel(
       h4("Filter Options"),
       selectInput("location_filter", "Select Location:", choices = c("All", unique(df$location_name)), selected = "All"),
-      sliderInput("date_range", "Select Date Range:", min = min(df$report_date), max = max(df$report_date),
-                  value = c(min(df$report_date), max(df$report_date)), timeFormat = "%Y-%m-%d"),
+      sliderInput("date_range", "Select Date Range:", 
+                  min = min(df$time_of_search, na.rm = TRUE), 
+                  max = max(df$time_of_search, na.rm = TRUE),
+                  value = c(min(df$time_of_search, na.rm = TRUE), max(df$time_of_search, na.rm = TRUE)),
+                  timeFormat = "%Y-%m-%d"),
       actionButton("apply_filter", "Reset Filter", class = "btn btn-primary", style = "margin-top: 20px;"),
       
       h4("Location Map", style = "margin-top: 30px;"),
@@ -127,7 +164,7 @@ server <- function(input, output, session) {
       filtered_data <- filtered_data %>% filter(location_name == input$location_filter)
     }
     filtered_data <- filtered_data %>%
-      filter(report_date >= input$date_range[1] & report_date <= input$date_range[2])
+      filter(time_of_search >= input$date_range[1] & time_of_search <= input$date_range[2])
     return(filtered_data)
   })
   
@@ -138,13 +175,13 @@ server <- function(input, output, session) {
   
   output$csv_table <- renderTable({
     df_to_display <- get_filtered_data()
-    df_to_display$report_date <- format(df_to_display$report_date, "%Y-%m-%d")
+    df_to_display$time_of_search <- format(df_to_display$time_of_search, "%Y-%m-%d")
     df_to_display %>% select(-latitude, -longitude)  # Hide coordinates in CSV output
   })
   
   output$temperature_plot <- renderPlotly({
     filtered_data <- get_filtered_data()
-    plot_ly(data = filtered_data, x = ~report_date, y = ~current_temperature, type = "scatter", mode = "lines+markers", name = "Temperature",
+    plot_ly(data = filtered_data, x = ~time_of_search, y = ~current_temperature, type = "scatter", mode = "lines+markers", name = "Temperature",
             line = list(shape = "spline", smoothing = 0.3)) %>%
       layout(
         title = "Temperature vs Time",
@@ -226,7 +263,7 @@ server <- function(input, output, session) {
   })
   
   observeEvent(input$apply_filter, {
-    updateSliderInput(session, "date_range", value = c(min(df$report_date), max(df$report_date)))
+    updateSliderInput(session, "date_range", value = c(min(df$time_of_search), max(df$time_of_search)))
     updateSelectInput(session, "location_filter", selected = "All")
   })
   
@@ -243,3 +280,5 @@ server <- function(input, output, session) {
 }
 
 shinyApp(ui = ui, server = server)
+
+#https://raw.githubusercontent.com/pythonsnatcher/nationwide_weather/5cce1ae87441d5fefdddb0e4d99b05ddde8d457a/data/nationwide_weather.db"

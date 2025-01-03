@@ -2,7 +2,7 @@ name: Render Shiny App
 
 on:
   schedule:
-    - cron: '0 0 1,15 * *'  # Runs on 1st and 15th of every mont
+    - cron: '0 0 1,15 * *'  # Runs on 1st and 15th of every mon
   workflow_dispatch:  # Allows manual trigger
   push:
     paths:

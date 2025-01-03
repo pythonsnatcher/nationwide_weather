@@ -1,12 +1,13 @@
 ---
 title: "English Weather Stats"
-runtime: shiny
+author: "Your Name"
+date: "`r Sys.Date()`"
 output: 
   html_document:
     theme: cosmo
     self_contained: true
+runtime: shiny
 ---
-
 # Set CRAN mirror to ensure the package installation can access CRAN
 options(repos = c(CRAN = "https://cran.rstudio.com"))
 
@@ -26,47 +27,35 @@ library(leaflet)
 library(shinyjs)  # Added shinyjs for modal popup
 library(RSQLite)  # Add this library
 
-# Replace the data source section
+# Data loading function
 query_weather_data <- function() {
-  url <- "https://raw.githubusercontent.com/pythonsnatcher/nationwide_weather/5cce1ae87441d5fefdddb0e4d99b05dddb0e4d99b05ddde8d457a/data/nationwide_weather.db"
+  url <- "https://raw.githubusercontent.com/pythonsnatcher/nationwide_weather/main/data/nationwide_weather.db"
   temp_db <- tempfile(fileext = ".db")
-  download.file(url, temp_db, mode = "wb")
   
-  con <- dbConnect(SQLite(), temp_db)
-  df <- dbGetQuery(con, "SELECT * FROM weather_data")
-  dbDisconnect(con)
-  unlink(temp_db)
-  return(df)
+  tryCatch({
+    download.file(url, temp_db, mode = "wb")
+    con <- dbConnect(SQLite(), temp_db)
+    df <- dbGetQuery(con, "SELECT * FROM weather_data")
+    dbDisconnect(con)
+    unlink(temp_db)
+    return(df)
+  }, error = function(e) {
+    warning("Error loading data: ", e$message)
+    return(data.frame(Error = "Failed to load data"))
+  })
 }
 
-# Replace the data loading section
-df <- tryCatch({
-  query_weather_data()
-}, error = function(e) {
-  data.frame(Error = "Failed to load data from URL")
-})
+# Load and process data
+df <- query_weather_data()
+df$report_date <- as.Date(df$report_date)
 
-# Check if the 'my_data' is loaded correctly
-if (exists("my_data")) {
-  df <- my_data  # If the data is loaded from data.R, assign it to df
-} else {
-  df <- data.frame(Error = "Data not found. Please check data.R.")  # Handle error if data is not loaded
-}
-
-# Check and convert 'report_date' if it's numeric (e.g., Excel date format)
-if (is.numeric(df$report_date)) {
-  df$report_date <- as.Date(df$report_date, origin = "1900-01-01")
-} else {
-  df$report_date <- as.Date(df$report_date)
-}
-
-# Add latitude and longitude to the data frame
+# Add coordinates
 location_coords <- data.frame(
-  location_name = c("London", "Birmingham", "Manchester", "Nottingham", "Leeds", "Liverpool", "Bristol", "Newcastle upon Tyne", "Southampton", "Brighton"),
+  location_name = c("London", "Birmingham", "Manchester", "Nottingham", "Leeds", 
+                   "Liverpool", "Bristol", "Newcastle upon Tyne", "Southampton", "Brighton"),
   latitude = c(51.5074, 52.4862, 53.4839, 52.9548, 53.8008, 53.4084, 51.4545, 54.9783, 50.9097, 50.8225),
   longitude = c(-0.1278, -1.8904, -2.2446, -1.1581, -1.5491, -2.9916, -2.5879, -1.6174, -1.4044, -0.1372)
 )
-
 df <- left_join(df, location_coords, by = "location_name")
 
 # Define the UI for the Shiny app

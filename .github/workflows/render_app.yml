@@ -23,7 +23,7 @@ jobs:
         
     - name: Render Shiny app to HTML
       run: |
-        R -e "rmarkdown::render('Untitled-1', output_file = 'index.html')"
+        R -e "rmarkdown::render('scripts/dashboard.Rmd', output_dir = '.', output_file = 'index.html')"
         
     - name: Commit and push changes
       run: |

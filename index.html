@@ -9,7 +9,9 @@
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
+<meta name="author" content="Your Name" />
 
+<meta name="date" content="2025-01-03" />
 
 <title>English Weather Stats</title>
 
@@ -367,6 +369,8 @@ display: none;
 
 
 <h1 class="title toc-ignore">English Weather Stats</h1>
+<h4 class="author">Your Name</h4>
+<h4 class="date">2025-01-03</h4>
 
 </div>
 
@@ -388,44 +392,30 @@ TRUE)) { install.packages(pkg) } } library(shiny) library(plotly)
 library(dplyr) library(leaflet) library(shinyjs) # Added shinyjs for
 modal popup library(RSQLite) # Add this library</p>
 </div>
-<div id="section-replace-the-data-source-section" class="section level1">
-<h1>Replace the data source section</h1>
-<p>query_weather_data &lt;- function() { url &lt;- “<a href="https://raw.githubusercontent.com/pythonsnatcher/nationwide_weather/5cce1ae87441d5fefdddb0e4d99b05dddb0e4d99b05ddde8d457a/data/nationwide_weather.db" class="uri">https://raw.githubusercontent.com/pythonsnatcher/nationwide_weather/5cce1ae87441d5fefdddb0e4d99b05dddb0e4d99b05ddde8d457a/data/nationwide_weather.db</a>”
-temp_db &lt;- tempfile(fileext = “.db”) download.file(url, temp_db, mode
-= “wb”)</p>
-<p>con &lt;- dbConnect(SQLite(), temp_db) df &lt;- dbGetQuery(con,
-“SELECT * FROM weather_data”) dbDisconnect(con) unlink(temp_db)
-return(df) }</p>
+<div id="section-data-loading-function" class="section level1">
+<h1>Data loading function</h1>
+<p>query_weather_data &lt;- function() { url &lt;- “<a href="https://raw.githubusercontent.com/pythonsnatcher/nationwide_weather/main/data/nationwide_weather.db" class="uri">https://raw.githubusercontent.com/pythonsnatcher/nationwide_weather/main/data/nationwide_weather.db</a>”
+temp_db &lt;- tempfile(fileext = “.db”)</p>
+<p>tryCatch({ download.file(url, temp_db, mode = “wb”) con &lt;-
+dbConnect(SQLite(), temp_db) df &lt;- dbGetQuery(con, “SELECT * FROM
+weather_data”) dbDisconnect(con) unlink(temp_db) return(df) }, error =
+function(e) { warning(“Error loading data:”, e$message)
+return(data.frame(Error = “Failed to load data”)) }) }</p>
 </div>
-<div id="section-replace-the-data-loading-section" class="section level1">
-<h1>Replace the data loading section</h1>
-<p>df &lt;- tryCatch({ query_weather_data() }, error = function(e) {
-data.frame(Error = “Failed to load data from URL”) })</p>
+<div id="section-load-and-process-data" class="section level1">
+<h1>Load and process data</h1>
+<p>df &lt;- query_weather_data() df<span class="math inline">\(report_date &lt;-
+as.Date(df\)</span>report_date)</p>
 </div>
-<div id="section-check-if-the-my_data-is-loaded-correctly" class="section level1">
-<h1>Check if the ‘my_data’ is loaded correctly</h1>
-<p>if (exists(“my_data”)) { df &lt;- my_data # If the data is loaded
-from data.R, assign it to df } else { df &lt;- data.frame(Error = “Data
-not found. Please check data.R.”) # Handle error if data is not loaded
-}</p>
-</div>
-<div id="section-check-and-convert-report_date-if-its-numeric-e.g.-excel-date-format" class="section level1">
-<h1>Check and convert ‘report_date’ if it’s numeric (e.g., Excel date
-format)</h1>
-<p>if (is.numeric(df<span class="math inline">\(report_date)) {
-  df\)</span>report_date &lt;- as.Date(df<span class="math inline">\(report_date, origin = &quot;1900-01-01&quot;)
-} else {
-  df\)</span>report_date &lt;- as.Date(df$report_date) }</p>
-</div>
-<div id="section-add-latitude-and-longitude-to-the-data-frame" class="section level1">
-<h1>Add latitude and longitude to the data frame</h1>
+<div id="section-add-coordinates" class="section level1">
+<h1>Add coordinates</h1>
 <p>location_coords &lt;- data.frame( location_name = c(“London”,
 “Birmingham”, “Manchester”, “Nottingham”, “Leeds”, “Liverpool”,
 “Bristol”, “Newcastle upon Tyne”, “Southampton”, “Brighton”), latitude =
 c(51.5074, 52.4862, 53.4839, 52.9548, 53.8008, 53.4084, 51.4545,
 54.9783, 50.9097, 50.8225), longitude = c(-0.1278, -1.8904, -2.2446,
--1.1581, -1.5491, -2.9916, -2.5879, -1.6174, -1.4044, -0.1372) )</p>
-<p>df &lt;- left_join(df, location_coords, by = “location_name”)</p>
+-1.1581, -1.5491, -2.9916, -2.5879, -1.6174, -1.4044, -0.1372) ) df
+&lt;- left_join(df, location_coords, by = “location_name”)</p>
 </div>
 <div id="section-define-the-ui-for-the-shiny-app" class="section level1">
 <h1>Define the UI for the Shiny app</h1>

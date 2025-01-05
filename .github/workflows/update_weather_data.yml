@@ -46,7 +46,7 @@ jobs:
         GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
       run: |
         echo "Starting Python script execution."
-        python scripts/update.py
+        python scripts/update_sql_db.py
         echo "Python script execution completed."
 
     # Debug step to check if database exists after running script

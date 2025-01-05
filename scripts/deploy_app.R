@@ -1,6 +1,9 @@
+# Set CRAN mirror to avoid issues with package installation
+cran_mirror <- "https://cran.rstudio.com/"
+
 # Install the 'rsconnect' package if it's not already installed
 if (!requireNamespace("rsconnect", quietly = TRUE)) {
-  install.packages("rsconnect")
+  install.packages("rsconnect", repos = cran_mirror)
 }
 
 # Load the package

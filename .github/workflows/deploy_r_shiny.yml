@@ -39,8 +39,8 @@ jobs:
             secret = Sys.getenv("SHINYAPPS_SECRET")
           )
           rsconnect::deployApp(
-            appDir = "scripts",      # Path to the app directory
-            appFiles = c("app.r"),   # Files to deploy
-            appName = "your-app-name",  # Replace with the app name
+            appDir = "scripts",      # Adjust path if necessary
+            appFiles = c("app.r"),   # Ensure this is the main Shiny app file
+            appName = "your-app-name",  # Replace with your actual app name
             forceUpdate = TRUE
           )

@@ -2,7 +2,7 @@ name: Deploy Shiny App
 
 on:
   push:
-    branches: [ main ]  # or whatever your main branch is named
+    branches: [ main ]
 
 jobs:
   deploy:
@@ -28,10 +28,42 @@ jobs:
 
     - name: Install R dependencies
       run: |
-        Rscript -e 'install.packages(c("remotes", "rsconnect"), repos="https://cran.rstudio.com")'
+        Rscript -e 'install.packages(c(
+          "remotes",
+          "rsconnect",
+          "DBI",
+          "dplyr",
+          "leaflet",
+          "lubridate",
+          "plotly",
+          "RPostgres",
+          "RSQLite",
+          "shinyjs"
+        ), repos="https://cran.rstudio.com")'
+
+    - name: Wait for existing deployments
+      run: |
+        sleep 30  # Wait 30 seconds for any existing deployments to complete
         
     - name: Deploy to shinyapps.io
       env:
         SHINYAPPS_TOKEN: ${{ secrets.SHINYAPPS_TOKEN }}
         SHINYAPPS_SECRET: ${{ secrets.SHINYAPPS_SECRET }}
-      run: Rscript scripts/deploy_app.R
+      run: |
+        max_retries=3
+        retry_count=0
+        while [ $retry_count -lt $max_retries ]; do
+          if Rscript scripts/deploy_app.R; then
+            echo "Deployment successful"
+            exit 0
+          else
+            retry_count=$((retry_count+1))
+            if [ $retry_count -lt $max_retries ]; then
+              echo "Deployment failed, waiting 30 seconds before retry $retry_count of $max_retries"
+              sleep 30
+            else
+              echo "Deployment failed after $max_retries attempts"
+              exit 1
+            fi
+          fi
+        done

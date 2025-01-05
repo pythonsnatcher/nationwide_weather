@@ -1,8 +1,9 @@
 name: Deploy Shiny App
 
 on:
-  push:
-    branches: [ main ]
+  schedule:
+    - cron: '0 0 */14 * *'  # Run every 14 days at midnight
+  workflow_dispatch:         # Allows manual triggering
 
 jobs:
   deploy:

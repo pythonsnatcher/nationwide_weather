@@ -3,11 +3,13 @@
 ├── data
 │   ├── nationwide_weather.db
 │   └── placeholder.py
+├── index.html
 └── scripts
     ├── app.r
+    ├── dashboard.Rmd
     ├── main.py
-    ├── nationwide_weather_shiny_app.r
+    ├── postgres_ingest.py
     ├── scratch.r
     └── update.py
 
-3 directories, 8 files
+3 directories, 10 files

@@ -1,11 +1,9 @@
-# Ensure system dependencies are available
-system("sudo apt-get update")
-system("sudo apt-get install -y libcurl4-openssl-dev")
+# Ensure required packages are installed
+required_packages <- c("shiny", "rsconnect", "httpuv", "rmarkdown", "knitr", "jsonlite", "RJSONIO", "htmltools", "reticulate")
 
-# Install the 'rsconnect' package if it's not already installed
-if (!requireNamespace("rsconnect", quietly = TRUE)) {
-  install.packages("rsconnect", repos = "https://cran.rstudio.com/")
-}
+new_packages <- required_packages[!(required_packages %in% installed.packages()[,"Package"])]
+if(length(new_packages)) install.packages(new_packages, repos = "https://cran.rstudio.com/")
+
 
 # Load the rsconnect package
 library(rsconnect)

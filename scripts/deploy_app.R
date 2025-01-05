@@ -1,4 +1,9 @@
-# Load necessary library
+# Install the 'rsconnect' package if it's not already installed
+if (!requireNamespace("rsconnect", quietly = TRUE)) {
+  install.packages("rsconnect")
+}
+
+# Load the package
 library(rsconnect)
 
 # Set account information

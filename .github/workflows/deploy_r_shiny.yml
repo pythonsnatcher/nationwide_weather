@@ -26,21 +26,10 @@ jobs:
         run: |
           Rscript -e 'install.packages("rsconnect")'
 
-      # Deploy Shiny App
-      - name: Deploy Shiny App
+      # Run the deployment script
+      - name: Run Deployment Script
         env:
           SHINYAPPS_TOKEN: ${{ secrets.SHINYAPPS_TOKEN }}
           SHINYAPPS_SECRET: ${{ secrets.SHINYAPPS_SECRET }}
         run: |
-          library(rsconnect)
-          rsconnect::setAccountInfo(
-            name = 'tuco-bear',
-            token = Sys.getenv("SHINYAPPS_TOKEN"),
-            secret = Sys.getenv("SHINYAPPS_SECRET")
-          )
-          rsconnect::deployApp(
-            appDir = "scripts",      # Adjust path if necessary
-            appFiles = c("app.r"),   # Ensure this is the main Shiny app file
-            appName = "your-app-name",  # Replace with your actual app name
-            forceUpdate = TRUE
-          )
+          Rscript deploy_app.R

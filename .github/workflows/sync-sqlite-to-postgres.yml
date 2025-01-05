@@ -38,11 +38,13 @@ jobs:
         python scripts/postgres_ingest.py
         echo "Ingestion script completed."
 
-    # Commit and push any changes if applicable
-    - name: Configure Git and Commit Changes
+    - name: Configure Git
       run: |
         git config --global user.name 'github-actions'
         git config --global user.email 'github-actions@github.com'
+
+    - name: Commit and push changes
+      run: |
         git add .
-        git commit -m 'Sync SQLite to PostgreSQL'
-        git push || echo "No changes to commit."
+        git commit -m 'Sync SQLite to PostgreSQL' || echo "No changes to commit."
+        git push || echo "Nothing to push."

@@ -1,12 +1,13 @@
-# Set CRAN mirror to avoid issues with package installation
-cran_mirror <- "https://cran.rstudio.com/"
+# Ensure system dependencies are available
+system("sudo apt-get update")
+system("sudo apt-get install -y libcurl4-openssl-dev")
 
 # Install the 'rsconnect' package if it's not already installed
 if (!requireNamespace("rsconnect", quietly = TRUE)) {
-  install.packages("rsconnect", repos = cran_mirror)
+  install.packages("rsconnect", repos = "https://cran.rstudio.com/")
 }
 
-# Load the package
+# Load the rsconnect package
 library(rsconnect)
 
 # Set account information
@@ -18,7 +19,7 @@ rsconnect::setAccountInfo(
 
 # Deploy the app
 rsconnect::deployApp(
-  appDir = "scripts",      # Replace with the path to your app directory
+  appDir = "scripts",      # Path to your app directory
   appFiles = c("app.r"),   # Ensure this includes all necessary files for deployment
   appName = "your-app-name",  # Replace with your app name
   forceUpdate = TRUE

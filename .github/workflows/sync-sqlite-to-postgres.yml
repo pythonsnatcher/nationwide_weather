@@ -1,0 +1,45 @@
+name: Sync SQLite to PostgreSQL
+
+on:
+  workflow_dispatch:  # Trigger manually
+  schedule:
+    - cron: "0 0 */14 * *"  # Run every 14 days at midnight
+
+jobs:
+  sync-data:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.8'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests psycopg2-binary
+
+    - name: Set up PostgreSQL password
+      run: echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> $GITHUB_ENV
+
+    - name: Download SQLite database
+      run: |
+        curl -L -o nationwide_weather.db "https://raw.githubusercontent.com/pythonsnatcher/nationwide_weather/5cce1ae87441d5fefdddb0e4d99b05ddde8d457a/data/nationwide_weather.db"
+
+    - name: Sync SQLite to PostgreSQL
+      run: |
+        python3 scripts/postgres_ingest.py  # Run the PostgreSQL ingestion script
+
+    - name: Remove SQLite database
+      run: |
+        rm nationwide_weather.db  # Delete the SQLite database after use
+
+    - name: Commit changes (optional)
+      run: |
+        git add .
+        git commit -m "Updated PostgreSQL with new data"
+        git push

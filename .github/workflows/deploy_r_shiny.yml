@@ -86,7 +86,8 @@ jobs:
               appDir = "scripts", 
               appName = "YOUR_APP_NAME", 
               appFiles = "app.r",
-              logLevel="verbose"
+              logLevel="verbose",
+              forceUpdate = TRUE
             )'; then
             echo "✓ Deployment successful"
             exit 0

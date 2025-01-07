@@ -1,3 +1,14 @@
+install.packages(c(
+  "DBI",
+  "RPostgres",
+  "shiny",
+  "plotly",
+  "dplyr",
+  "leaflet",
+  "shinyjs",
+  "RSQLite",
+  "lubridate"
+))
 # Load required libraries
 library(DBI)
 library(RPostgres)

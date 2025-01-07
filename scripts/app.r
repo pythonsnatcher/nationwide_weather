@@ -15,7 +15,7 @@ query_weather_data <- function() {
                     host = "dpg-ctsr3jpu0jms73bcvhu0-a.oregon-postgres.render.com",
                     port = 5432,
                     user = "admin",
-                    password = os.getenv('POSTGRES_PASSWORD'),
+                    password = Sys.getenv('POSTGRES_PASSWORD'),
                     dbname = "nationwide_weather")
   # Query to fetch the weather data from the PostgreSQL database
   query <- "

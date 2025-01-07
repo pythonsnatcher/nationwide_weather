@@ -87,7 +87,10 @@ jobs:
               appName = "YOUR_APP_NAME", 
               appFiles = "app.r",
               logLevel="verbose",
-              forceUpdate = TRUE
+              forceUpdate = TRUE,
+              envVars = list(
+                POSTGRES_PASSWORD = Sys.getenv("POSTGRES_PASSWORD")
+                )
             )'; then
             echo "✓ Deployment successful"
             exit 0

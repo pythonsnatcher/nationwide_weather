@@ -67,12 +67,12 @@ jobs:
           ls -la
         fi
         
-        # Debug: Check if app.R exists
-        echo "Checking for app.R..."
-        if [ -f "scripts/app.R" ]; then
-          echo "✓ app.R found"
+        # Debug: Check if app.r exists
+        echo "Checking for app.r..."
+        if [ -f "scripts/app.r" ]; then
+          echo "✓ app.r found"
         else
-          echo "✗ app.R not found"
+          echo "✗ app.r not found"
         fi
         
         while [ $retry_count -lt $max_retries ]; do
@@ -85,7 +85,7 @@ jobs:
             rsconnect::deployApp(
               appDir = "scripts", 
               appName = "YOUR_APP_NAME", 
-              appFiles = "app.R",
+              appFiles = "app.r",
               logLevel="verbose"
             )'; then
             echo "✓ Deployment successful"

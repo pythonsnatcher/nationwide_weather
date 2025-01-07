@@ -4,6 +4,8 @@ on:
   schedule:
     - cron: '0 0 */14 * *'  # Run every 14 days at midnight
   workflow_dispatch:         # Allows manual triggering
+  push:                     # Optional: add this if you want it to run on pushes
+    branches: [ main ]      # Specify which branch
 
 jobs:
   deploy:

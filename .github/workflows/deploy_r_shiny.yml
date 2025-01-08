@@ -4,8 +4,8 @@ on:
   schedule:
     - cron: '0 0 */14 * *'  # Run every 14 days at midnight
   workflow_dispatch:         # Allows manual triggering
-  push:                     # Optional: add this if you want it to run on pushes
-    branches: [ main ]      # Specify which branch
+  push:                      # Optional: add this if you want it to run on pushes
+    branches: [ main ]       # Specify which branch
 
 jobs:
   deploy:
@@ -44,6 +44,11 @@ jobs:
           "shinyjs"
         ), repos="https://cran.rstudio.com")'
 
+    - name: Create .Renviron file
+      run: |
+        echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" > scripts/.Renviron
+        echo "Created .Renviron file with POSTGRES_PASSWORD"
+
     - name: Wait for existing deployments
       run: |
         sleep 30  # Wait 30 seconds for any existing deployments to complete
@@ -55,7 +60,10 @@ jobs:
       run: |
         max_retries=3
         retry_count=0
-        
+
+        echo "SHINYAPPS_TOKEN: ${SHINYAPPS_TOKEN}"
+        echo "SHINYAPPS_SECRET: ${SHINYAPPS_SECRET}"
+
         # Debug: Check if scripts directory exists
         echo "Checking for scripts directory..."
         if [ -d "scripts" ]; then
@@ -66,7 +74,7 @@ jobs:
           echo "Current directory contents:"
           ls -la
         fi
-        
+
         # Debug: Check if app.r exists
         echo "Checking for app.r..."
         if [ -f "scripts/app.r" ]; then
@@ -74,7 +82,7 @@ jobs:
         else
           echo "✗ app.r not found"
         fi
-        
+
         while [ $retry_count -lt $max_retries ]; do
           echo "Attempting deployment (attempt $((retry_count+1)) of $max_retries)..."
           if Rscript -e '
@@ -85,10 +93,9 @@ jobs:
             rsconnect::deployApp(
               appDir = "scripts", 
               appName = "YOUR_APP_NAME", 
-              appFiles = "app.r",
+              appFiles = c("app.r", ".Renviron"),
               logLevel="verbose",
-              forceUpdate = TRUE,
-              envVars = c(POSTGRES_PASSWORD = Sys.getenv("POSTGRES_PASSWORD")) 
+              forceUpdate = TRUE
             )'; then
             echo "✓ Deployment successful"
             exit 0

@@ -176,7 +176,7 @@ ui <- fluidPage(
                column(3, h4("UV Index Level Count"), plotlyOutput("uv_bar_chart")), br())
     )
   )
-)
+),
 # Define the server logic
 
 server <- function(input, output, session) {

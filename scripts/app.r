@@ -157,10 +157,10 @@ ui <- fluidPage(
       h4("Filter Options"),
       selectInput("location_filter", "Select Location:", choices = sort(unique(df$location_name)), selected = "London"),
       sliderInput("date_range", "Select Date Range:",
-                  min = min(df$time_of_search, na.rm = TRUE),
-                  max = max(df$time_of_search, na.rm = TRUE),
-                  value = c(min(df$time_of_search, na.rm = TRUE), max(df$time_of_search, na.rm = TRUE)),
-                  timeFormat = "%Y-%m-%d"),
+            min = min(df$time_of_search, na.rm = TRUE),
+            max = max(df$time_of_search, na.rm = TRUE),
+            value = c(max(df$time_of_search, na.rm = TRUE) - months(1),  # start 1 months ago
+                     max(df$time_of_search, na.rm = TRUE)), 
       actionButton("apply_filter", "Reset Filter", class = "btn btn-primary", style = "margin-top: 20px;"),
 
       h4("Location Map", style = "margin-top: 30px;"),

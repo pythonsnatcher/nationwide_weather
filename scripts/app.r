@@ -160,7 +160,8 @@ ui <- fluidPage(
             min = min(df$time_of_search, na.rm = TRUE),
             max = max(df$time_of_search, na.rm = TRUE),
             value = c(max(df$time_of_search, na.rm = TRUE) - months(1),  # start 1 months ago
-                     max(df$time_of_search, na.rm = TRUE))), 
+                     max(df$time_of_search, na.rm = TRUE))
+                 ), 
       actionButton("apply_filter", "Reset Filter", class = "btn btn-primary", style = "margin-top: 20px;"),
 
       h4("Location Map", style = "margin-top: 30px;"),

@@ -15,8 +15,8 @@ password = os.getenv('POSTGRES_PASSWORD')  # Get password from environment varia
 dbname = "nationwide_weather"
 
 # Set the URL for the SQLite database
-url = "https://raw.githubusercontent.com/pythonsnatcher/nationwide_weather/5cce1ae87441d5fefdddb0e4d99b05ddde8d457a/data/nationwide_weather.db"
-
+# url = "https://raw.githubusercontent.com/pythonsnatcher/nationwide_weather/5cce1ae87441d5fefdddb0e4d99b05ddde8d457a/data/nationwide_weather.db"
+url = "https://raw.githubusercontent.com/pythonsnatcher/nationwide_weather/main/data/nationwide_weather.db"
 # Download the SQLite database
 response = requests.get(url)
 sqlite_db = io.BytesIO(response.content)

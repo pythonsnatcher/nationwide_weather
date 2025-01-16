@@ -54,6 +54,7 @@ query_weather_data <- function() {
     --limit 10
   "
 
+  
   # Fetch the data
   df <- dbGetQuery(conn, query)
 
@@ -159,9 +160,9 @@ ui <- fluidPage(
       sliderInput("date_range", "Select Date Range:",
             min = min(df$time_of_search, na.rm = TRUE),
             max = max(df$time_of_search, na.rm = TRUE),
-            value = c(max(df$time_of_search, na.rm = TRUE) - months(1),  # start 1 months ago
-                     max(df$time_of_search, na.rm = TRUE))
-                 ), 
+            value = c(max(df$time_of_search, na.rm = TRUE) - months(2),
+                     max(df$time_of_search, na.rm = TRUE)),
+            timeFormat = "%Y-%m-%d"),
       actionButton("apply_filter", "Reset Filter", class = "btn btn-primary", style = "margin-top: 20px;"),
 
       h4("Location Map", style = "margin-top: 30px;"),
@@ -170,17 +171,85 @@ ui <- fluidPage(
     ),
 
     mainPanel(
-      fluidRow(column(12, h4("CSV Viewer"), div(uiOutput("csv_scroller"),
-                                                style = "height: 300px; overflow-y: scroll; overflow-x: auto; border: 1px solid #ccc; padding: 10px; background-color: white; width: 100%; box-sizing: border-box; text-align: left;"), br())),
-      fluidRow(column(12, h4("Temperature vs. Time Plot"), plotlyOutput("temperature_plot")), br()),
-      fluidRow(column(9, h4("Weather Condition Count"), plotlyOutput("weather_condition_histogram")),
-               column(3, h4("UV Index Level Count"), plotlyOutput("uv_bar_chart")), br())
+      fluidRow(
+        column(12,
+               downloadButton('downloadData', 'Download Filtered Data (CSV)'),
+               br(),
+               br()  # Add some space after the button
+        )
+      ),
+      fluidRow(
+        column(12, 
+               h4("Temperature Over Time"),
+               plotlyOutput("temperature_plot")),
+        br()
+      ),
+      fluidRow(
+        column(12, 
+               h4("Temperature vs Chance of Precipitation"),
+               plotlyOutput("humidity_precip_plot")),
+        br()
+      ),
+      fluidRow(
+        column(6,
+               h4("Wind Direction Distribution"),
+               plotlyOutput("wind_rose")),
+        column(6,
+               h4("Wind Speed by Direction"),
+               plotlyOutput("wind_speed_rose")),
+        br()
+      ),
+      fluidRow(
+        column(12, 
+               h4("Humidity vs Temperature"),
+               plotlyOutput("humidity_temp_plot")),
+        br()
+      ),
+      fluidRow(
+        column(12, 
+               h4("Weather Condition Distribution"),
+               plotlyOutput("weather_condition_histogram")),
+        br()
+      )
     )
   )
 )
 # Define the server logic
 
 server <- function(input, output, session) {
+
+  parse_wind_direction <- function(direction_text) {
+    # Convert to lowercase
+    text <- tolower(direction_text)
+
+    # Remove all words except directional terms
+    text <- gsub("light|moderate|strong|winds|from|the", "", text)
+    text <- trimws(text)  # Remove extra whitespace
+
+    # Define direction mapping
+    direction_map <- list(
+      "north" = 0,
+      "north east" = 45,
+      "northeast" = 45,
+      "east" = 90,
+      "south east" = 135,
+      "southeast" = 135,
+      "south" = 180,
+      "south west" = 225,
+      "southwest" = 225,
+      "west" = 270,
+      "north west" = 315,
+      "northwest" = 315
+    )
+
+    # Check for direction match
+    for (dir in names(direction_map)) {
+      if (grepl(dir, text)) {
+        return(direction_map[[dir]])
+      }
+    }
+    return(NA_real_)
+  }
 
   get_filtered_data <- reactive({
     filtered_data <- df
@@ -229,79 +298,274 @@ server <- function(input, output, session) {
 
   output$temperature_plot <- renderPlotly({
     filtered_data <- get_filtered_data()
-    plot_ly(data = filtered_data, x = ~time_of_search, y = ~current_temperature, type = "scatter", mode = "lines+markers", name = "Temperature",
-            line = list(shape = "spline", smoothing = 0.3)) %>%
+    plot_ly(data = filtered_data,
+            x = ~time_of_search,
+            y = ~current_temperature,
+            type = "scatter",
+            mode = "lines+markers") %>%
       layout(
-        title = "Temperature vs Time",
-        xaxis = list(title = "Date"),
-        yaxis = list(title = "Temperature (°C)"),
-        hovermode = "closest",
-        plot_bgcolor = "#f2f2f2",
-        transition = list(duration = 500)  # Smooth transition
+        xaxis = list(title = "Time"),
+        yaxis = list(
+          title = "Temperature (C)"
+        ),
+        showlegend = FALSE
       )
   })
 
-  # Render the weather condition histogram
+  # Weather Condition Histogram
   output$weather_condition_histogram <- renderPlotly({
-    filtered_data <- get_filtered_data()
+    filtered_data <- get_filtered_data() %>%
+      group_by(weather_condition) %>%
+      summarise(count = n()) %>%
+      filter(count >= 3) %>%
+      arrange(desc(count)) %>%
+      mutate(weather_condition = factor(weather_condition, levels = weather_condition))
 
-    # Create a count of weather conditions and sort in descending order
-    weather_counts <- filtered_data %>%
-      count(weather_condition) %>%
-      arrange(desc(n)) %>%
-      filter(n >= 3)  # Filter out counts less than 1
-
-    # Explicitly set the factor levels of weather_condition based on the count order
-    weather_counts$weather_condition <- factor(weather_counts$weather_condition, levels = weather_counts$weather_condition)
-
-    # Create the histogram plot with animation
-    fig <- plot_ly(
-      data = weather_counts,
-      x = ~weather_condition,
-      y = ~n,
-      type = "bar",
-      name = "Weather Condition Count",
-      marker = list(color = 'rgba(55, 128, 191, 0.7)', line = list(color = 'rgba(0,0,0,0.1)', width = 1)),
-      animation_opts = list(frame = list(duration = 1000, redraw = TRUE), fromcurrent = TRUE)
-    ) %>%
+    plot_ly(data = filtered_data,
+            x = ~weather_condition,
+            y = ~count,
+            type = "bar") %>%
       layout(
-        title = "Weather Condition Count",
         xaxis = list(title = "Weather Condition", tickangle = 45),
-        yaxis = list(title = "Count"),
-        margin = list(l = 40, r = 40, t = 40, b = 80)
+        yaxis = list(title = "Count")
       )
-
-    fig
   })
 
-  # Render the UV Index Level Count as a stacked bar chart
-  output$uv_bar_chart <- renderPlotly({
-    filtered_data <- get_filtered_data()
-
-    # Count the occurrences of each UV index level
-    uv_counts <- filtered_data %>%
-      count(uv_index_level) %>%
-      filter(uv_index_level != "Unknown") %>%  # Exclude "unknown"
-      arrange(desc(n))  # Sort by count in descending order
-
-    # Create the stacked bar chart for UV index levels (Using barmode = 'stack')
-    fig <- plot_ly(
-      data = uv_counts,
-      x = ~uv_index_level,
-      y = ~n,
-      type = "bar",
-      name = "UV Index Level Count",
-      marker = list(color = c('rgba(255, 159, 64, 0.7)', 'rgba(255, 99, 132, 0.7)', 'rgba(54, 162, 235, 0.7)')),
-      barmode = 'stack'  # This ensures the bars are stacked on top of each other
+  # Temperature vs Precipitation Plot
+  output$humidity_precip_plot <- renderPlotly({
+    filtered_data <- get_filtered_data() %>%
+      filter(chance_of_precipitation > 0)
+    
+    # Create linear model for trend line
+    lm_model <- lm(chance_of_precipitation ~ current_temperature, data = filtered_data)
+    
+    # Create sequence for trend line
+    temp_range <- seq(min(filtered_data$current_temperature, na.rm = TRUE), 
+                     max(filtered_data$current_temperature, na.rm = TRUE), 
+                     length.out = 100)
+    trend_data <- data.frame(
+      current_temperature = temp_range,
+      chance_of_precipitation = predict(lm_model, newdata = data.frame(current_temperature = temp_range))
+    )
+    
+    plot_ly(
+      data = filtered_data,
+      x = ~current_temperature,
+      y = ~chance_of_precipitation,
+      type = 'scatter',
+      mode = 'markers',
+      marker = list(
+        color = '#1f77b4',
+        size = 8,
+        opacity = 0.6
+      ),
+      showlegend = FALSE
     ) %>%
+      # Add trend line
+      add_trace(
+        data = trend_data,
+        x = ~current_temperature,
+        y = ~chance_of_precipitation,
+        type = 'scatter',
+        mode = 'lines',
+        line = list(color = 'red', width = 1),
+        showlegend = FALSE,
+        hoverinfo = 'skip'
+      ) %>%
       layout(
-        title = "UV Index Level Count",
-        xaxis = list(title = "UV Index Level"),
-        yaxis = list(title = "Count"),
-        margin = list(l = 40, r = 40, t = 40, b = 80)
+        xaxis = list(
+          title = "Temperature (C)",
+          standoff = 30
+        ),
+        yaxis = list(
+          title = "Chance of Precipitation (%)",
+          range = c(0, 100)
+        ),
+        showlegend = FALSE,
+        hovermode = "closest"
+      )
+  })
+
+  # Wind Direction Distribution
+  output$wind_rose <- renderPlotly({
+    filtered_data <- get_filtered_data()
+    
+    # Function to convert wind description to angle
+    get_angle <- function(description) {
+      if (is.na(description) || !is.character(description)) {
+        return(NA)
+      }
+      
+      # Remove "wind from" and convert to lowercase
+      direction <- tolower(trimws(description))
+      
+      # Define cardinal direction angles (angle where wind is pointing TO)
+      # Adjusted to match compass degrees (0 = North, 90 = East, etc.)
+      angles <- c(
+        "north" = 0,    # Changed from 180
+        "south" = 180,  # Changed from 0
+        "east" = 90,    # Changed from 270
+        "west" = 270    # Changed from 90
+      )
+      
+      # Count occurrences of each direction
+      n_count <- as.integer(grepl("north", direction))
+      s_count <- as.integer(grepl("south", direction))
+      e_count <- as.integer(grepl("east", direction))
+      w_count <- as.integer(grepl("west", direction))
+      
+      # Calculate weighted average angle
+      total_weight <- n_count + s_count + e_count + w_count
+      if (total_weight == 0 || is.na(total_weight)) {
+        return(NA)
+      }
+      
+      weighted_angle <- (
+        n_count * angles["north"] +
+        s_count * angles["south"] +
+        e_count * angles["east"] +
+        w_count * angles["west"]
+      ) / total_weight
+      
+      return(weighted_angle)
+    }
+    
+    wind_freq <- filtered_data %>%
+      mutate(angle = sapply(wind_direction_description, get_angle)) %>%
+      filter(!is.na(angle)) %>%
+      group_by(angle) %>%
+      summarise(
+        count = n(),
+        descriptions = list(unique(wind_direction_description)),
+        .groups = 'drop'
       )
 
-    fig
+    # Print to console
+    cat("\nWind Direction Frequencies:\n")
+    cat("------------------------\n")
+    wind_freq %>%
+      arrange(desc(count)) %>%
+      mutate(
+        angle_readable = case_when(
+          angle == 0 ~ "North",
+          angle == 90 ~ "East",
+          angle == 180 ~ "South",
+          angle == 270 ~ "West",
+          TRUE ~ sprintf("%.1f degrees", angle)
+        )
+      ) %>%
+      rowwise() %>%
+      mutate(desc_str = paste(unlist(descriptions), collapse = ", ")) %>%
+      select(angle_readable, count, desc_str) %>%
+      print(n = Inf)
+    cat("------------------------\n")
+
+    plot_ly(data = wind_freq,
+            type = 'barpolar',
+            r = ~count,
+            theta = ~angle) %>%
+      layout(
+        polar = list(
+          angularaxis = list(
+            direction = "clockwise",
+            rotation = 90,  # Changed from 270 to 90 to put North at top
+            ticktext = c("N", "", "NE", "", "E", "", "SE", "", 
+                        "S", "", "SW", "", "W", "", "NW", ""),
+            tickvals = seq(0, 337.5, 22.5)
+          )
+        ),
+        showlegend = FALSE
+      )
+  })
+
+  # Wind Speed by Direction
+  output$wind_speed_rose <- renderPlotly({
+    filtered_data <- get_filtered_data()
+    
+    # Reuse the same get_angle function from above
+    get_angle <- function(description) {
+      if (is.na(description) || !is.character(description)) {
+        return(NA)
+      }
+      
+      direction <- tolower(trimws(description))
+      
+      angles <- c(
+        "north" = 0,
+        "south" = 180,
+        "east" = 90,
+        "west" = 270
+      )
+      
+      n_count <- as.integer(grepl("north", direction))
+      s_count <- as.integer(grepl("south", direction))
+      e_count <- as.integer(grepl("east", direction))
+      w_count <- as.integer(grepl("west", direction))
+      
+      total_weight <- n_count + s_count + e_count + w_count
+      if (total_weight == 0 || is.na(total_weight)) {
+        return(NA)
+      }
+      
+      weighted_angle <- (
+        n_count * angles["north"] +
+        s_count * angles["south"] +
+        e_count * angles["east"] +
+        w_count * angles["west"]
+      ) / total_weight
+      
+      return(weighted_angle)
+    }
+    
+    wind_speed_avg <- filtered_data %>%
+      mutate(angle = sapply(wind_direction_description, get_angle)) %>%
+      filter(!is.na(angle)) %>%
+      group_by(angle) %>%
+      summarise(
+        avg_speed = mean(wind_speed, na.rm = TRUE),
+        descriptions = list(unique(wind_direction_description)),
+        .groups = 'drop'
+      )
+
+    # Print to console
+    cat("\nWind Speed Averages by Direction:\n")
+    cat("------------------------\n")
+    wind_speed_avg %>%
+      arrange(desc(avg_speed)) %>%
+      mutate(
+        angle_readable = case_when(
+          angle == 0 ~ "North",
+          angle == 90 ~ "East",
+          angle == 180 ~ "South",
+          angle == 270 ~ "West",
+          TRUE ~ sprintf("%.1f degrees", angle)
+        )
+      ) %>%
+      rowwise() %>%
+      mutate(
+        desc_str = paste(unlist(descriptions), collapse = ", "),
+        avg_speed = round(avg_speed, 1)
+      ) %>%
+      select(angle_readable, avg_speed, desc_str) %>%
+      print(n = Inf)
+    cat("------------------------\n")
+
+    plot_ly(data = wind_speed_avg,
+            type = 'barpolar',
+            r = ~avg_speed,
+            theta = ~angle) %>%
+      layout(
+        polar = list(
+          angularaxis = list(
+            direction = "clockwise",
+            rotation = 90,
+            ticktext = c("N", "", "NE", "", "E", "", "SE", "", 
+                        "S", "", "SW", "", "W", "", "NW", ""),
+            tickvals = seq(0, 337.5, 22.5)
+          )
+        ),
+        showlegend = FALSE
+      )
   })
 
   output$map <- renderLeaflet({
@@ -326,6 +590,78 @@ server <- function(input, output, session) {
       footer = NULL
     ))
   })
+
+  output$humidity_temp_plot <- renderPlotly({
+    filtered_data <- get_filtered_data() %>%
+      filter(!is.na(current_temperature), !is.na(humidity))
+    
+    # Create linear model for trend line
+    lm_model <- lm(humidity ~ current_temperature, data = filtered_data)
+    
+    # Create sequence for trend line
+    temp_range <- seq(min(filtered_data$current_temperature, na.rm = TRUE), 
+                     max(filtered_data$current_temperature, na.rm = TRUE), 
+                     length.out = 100)
+    trend_data <- data.frame(
+      current_temperature = temp_range,
+      humidity = predict(lm_model, newdata = data.frame(current_temperature = temp_range))
+    )
+    
+    # Create scatter plot
+    p <- plot_ly(data = filtered_data,
+            x = ~current_temperature,
+            y = ~humidity,
+            type = 'scatter',
+            mode = 'markers',
+            marker = list(
+              color = '#1f77b4',
+              size = 8,
+              opacity = 0.6
+            ),
+            showlegend = FALSE) %>%
+      # Add trend line
+      add_trace(
+        data = trend_data,
+        x = ~current_temperature,
+        y = ~humidity,
+        type = 'scatter',
+        mode = 'lines',
+        line = list(color = 'red'),
+        showlegend = FALSE
+      ) %>%
+      layout(
+        xaxis = list(
+          title = "Temperature (C)",
+          standoff = 30
+        ),
+        yaxis = list(
+          title = "Humidity (%)",
+          range = c(0, 100)
+        ),
+        showlegend = FALSE,
+        hovermode = "closest"
+      )
+    
+    # Print correlation coefficient to console
+    cor_value <- cor(filtered_data$current_temperature, filtered_data$humidity)
+    cat("\nCorrelation between Temperature and Humidity:\n")
+    cat("------------------------\n")
+    cat("Correlation coefficient:", round(cor_value, 3), "\n")
+    cat("------------------------\n")
+    
+    p
+  })
+
+  output$downloadData <- downloadHandler(
+    filename = function() {
+      paste("weather_data_", format(Sys.time(), "%Y%m%d_%H%M"), ".csv", sep="")
+    },
+    content = function(file) {
+      # Get the filtered data
+      data_to_download <- get_filtered_data()
+      write.csv(data_to_download, file, row.names = FALSE)
+    }
+  )
 
 }
 

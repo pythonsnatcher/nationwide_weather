@@ -1,48 +1,48 @@
 name: Build Docker Image
 
 on:
-  workflow_dispatch:  # Manual trigger only - we only want to rebuild when dependencies change
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Debug - Environment Info
+    - name: Start Workflow
       run: |
-        echo "GitHub Workspace: $GITHUB_WORKSPACE"
-        echo "GitHub Reference: $GITHUB_REF"
-        echo "GitHub SHA: $GITHUB_SHA"
-        
+        echo "::group::Starting Workflow"
+        echo "Time: $(date)"
+        echo "Runner: ${{ runner.os }}"
+        echo "::endgroup::"
+    
     - uses: actions/checkout@v3
     
-    - name: Debug - Repository Contents
+    - name: Debug - Pre-build Environment
       run: |
-        echo "=== Full Repository Structure ==="
-        tree .
-        echo "\n=== Current Directory ==="
+        echo "::group::Environment Check"
+        echo "=== Working Directory ==="
         pwd
-        echo "\n=== Root Directory Contents ==="
-        ls -la
-        echo "\n=== Scripts Directory Contents ==="
-        ls -la scripts/ || echo "Scripts directory not found!"
-        echo "\n=== Dockerfile Location Check ==="
-        if [ -f "./scripts/Dockerfile" ]; then
-          echo "Dockerfile found at ./scripts/Dockerfile"
-          cat ./scripts/Dockerfile
-        else
-          echo "ERROR: Dockerfile not found at ./scripts/Dockerfile"
-        fi
+        echo -e "\n=== Repository Contents ==="
+        ls -R
+        echo -e "\n=== Environment Variables ==="
+        env
+        echo "::endgroup::"
         
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
-      
-    - name: Debug - Docker Info
+    - name: Docker Setup Check
       run: |
+        echo "::group::Docker Setup"
         echo "=== Docker Version ==="
         docker version
-        echo "\n=== Docker Info ==="
+        echo -e "\n=== Docker Info ==="
         docker info
+        echo -e "\n=== Docker Images ==="
+        docker images
+        echo "::endgroup::"
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+      with:
+        buildkitd-flags: --debug
         
     - name: Login to Docker Hub
       uses: docker/login-action@v2
@@ -50,40 +50,75 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
         
-    - name: Debug - Docker Hub Login Check
+    - name: Verify Docker Hub Login
       run: |
-        echo "=== Testing Docker Hub Authentication ==="
-        docker login -u ${{ secrets.DOCKERHUB_USERNAME }} 2>&1 | grep "Login Succeeded" || echo "Login verification failed"
+        echo "::group::Docker Hub Authentication"
+        echo "Checking Docker Hub login status..."
+        docker info | grep Username || echo "Not logged in to Docker Hub"
+        echo "::endgroup::"
         
-    - name: Build and push Docker image
+    - name: Build Docker image
+      uses: docker/build-push-action@v4
+      id: docker_build
+      with:
+        context: ./scripts
+        file: ./scripts/Dockerfile
+        push: false
+        tags: pythonsnatcher/shiny-app:latest
+        load: true
+        no-cache: true
+        buildkitd-flags: --debug
+        provenance: false
+        
+    - name: Build Verification
+      run: |
+        echo "::group::Build Verification"
+        echo "=== Local Images ==="
+        docker images
+        echo -e "\n=== Image Details ==="
+        docker inspect pythonsnatcher/shiny-app:latest || echo "Failed to inspect image"
+        echo -e "\n=== Image History ==="
+        docker history pythonsnatcher/shiny-app:latest || echo "Failed to get image history"
+        echo "::endgroup::"
+        
+    - name: Push to Docker Hub
+      if: success()
       uses: docker/build-push-action@v4
       with:
         context: ./scripts
         file: ./scripts/Dockerfile
         push: true
         tags: pythonsnatcher/shiny-app:latest
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+        provenance: false
         
-    - name: Debug - Post Build Checks
+    - name: Push Verification
+      if: success()
       run: |
+        echo "::group::Push Verification"
         echo "=== Pulling Image ==="
         docker pull pythonsnatcher/shiny-app:latest
-        echo "\n=== Image Details ==="
-        docker images | grep pythonsnatcher/shiny-app
-        echo "\n=== Image Inspection ==="
-        docker inspect pythonsnatcher/shiny-app:latest
-        echo "\n=== Container File System Check ==="
-        docker run --rm pythonsnatcher/shiny-app:latest ls -la /srv/shiny-server/
-        echo "\n=== R Version Check ==="
-        docker run --rm pythonsnatcher/shiny-app:latest R --version
-        echo "\n=== Container Environment Variables ==="
-        docker run --rm pythonsnatcher/shiny-app:latest env
-        
-    - name: Debug - Final Status
+        echo -e "\n=== Remote Image Details ==="
+        docker images pythonsnatcher/shiny-app:latest --format "{{.Repository}}:{{.Tag}} - Size:{{.Size}}"
+        echo "::endgroup::"
+
+    - name: Error Logging
+      if: failure()
+      run: |
+        echo "::group::Error Information"
+        echo "=== Docker System Info ==="
+        docker system info
+        echo -e "\n=== Docker Hub Connection Test ==="
+        curl -v https://registry.hub.docker.com/v2/ 2>&1
+        echo -e "\n=== Dockerfile Contents ==="
+        cat ./scripts/Dockerfile || echo "Dockerfile not found"
+        echo -e "\n=== Directory Structure ==="
+        find . -type f -name "Dockerfile" 2>/dev/null
+        echo "::endgroup::"
+
+    - name: Completion Status
       if: always()
       run: |
-        echo "=== Workflow Status ==="
-        echo "Job Status: ${{ job.status }}"
-        echo "Runner OS: ${{ runner.os }}"
-        echo "Workspace: ${{ github.workspace }}"
+        echo "::group::Workflow Completion"
+        echo "Time: $(date)"
+        echo "Final Status: ${{ job.status }}"
+        echo "::endgroup::"

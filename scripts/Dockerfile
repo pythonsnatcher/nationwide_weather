@@ -25,9 +25,11 @@ RUN R -e 'install.packages(c(\
     "shinyjs" \
     ), repos="https://cran.rstudio.com")'
 
-# Copy app.r and .Renviron
-COPY app.r .Renviron /srv/shiny-server/
+# Copy only app.r
+COPY app.r /srv/shiny-server/
 WORKDIR /srv/shiny-server
 
-# Expose port
+# Create directory for mounted data
+RUN mkdir -p /srv/shiny-server/data
+
 EXPOSE 3838

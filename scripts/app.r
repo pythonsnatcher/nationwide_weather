@@ -179,6 +179,23 @@ ui <- fluidPage(
         )
       ),
       fluidRow(
+        column(12,
+               wellPanel(
+                 style = "padding: 0;",
+                 actionButton("toggleRawData", "Raw Data ▼", 
+                            style = "width: 100%; text-align: left; padding: 10px;"),
+                 shinyjs::hidden(
+                   div(id = "rawDataContent",
+                       div(style = 'overflow-x: scroll; overflow-y: scroll; max-height: 400px; background-color: white; padding: 15px; border-radius: 5px;',
+                           uiOutput("csv_scroller")
+                       )
+                   )
+                 )
+               )
+        ),
+        br()
+      ),
+      fluidRow(
         column(12, 
                h4("Temperature Over Time"),
                plotlyOutput("temperature_plot")),
@@ -662,6 +679,16 @@ server <- function(input, output, session) {
       write.csv(data_to_download, file, row.names = FALSE)
     }
   )
+
+  observeEvent(input$toggleRawData, {
+    shinyjs::toggle("rawDataContent")
+    # Update button text to show appropriate arrow
+    if (input$toggleRawData %% 2 == 1) {
+      updateActionButton(session, "toggleRawData", "Raw Data ▲")
+    } else {
+      updateActionButton(session, "toggleRawData", "Raw Data ▼")
+    }
+  })
 
 }
 

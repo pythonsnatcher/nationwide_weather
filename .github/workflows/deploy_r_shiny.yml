@@ -12,6 +12,10 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     
+    - name: Create .Renviron file
+      run: |
+        echo "POSTGRES_PASSWORD='${{ secrets.POSTGRES_PASSWORD }}'" > scripts/.Renviron
+        
     - name: Debug - List contents
       run: |
         echo "Current directory:"
@@ -38,5 +42,6 @@ jobs:
           -e SHINYAPPS_TOKEN \
           -e SHINYAPPS_SECRET \
           -v $(pwd)/data:/srv/shiny-server/data \
+          -v $(pwd)/scripts/.Renviron:/srv/shiny-server/.Renviron \
           pythonsnatcher/shiny-app:latest \
           R -e 'print("R Session Info:"); sessionInfo(); print("Directory contents:"); list.files("/srv/shiny-server/"); print("Starting deployment..."); rsconnect::setAccountInfo(name="tuco-bear", token=Sys.getenv("SHINYAPPS_TOKEN"), secret=Sys.getenv("SHINYAPPS_SECRET")); rsconnect::deployApp("/srv/shiny-server", appName="YOUR_APP_NAME", forceUpdate=TRUE)'

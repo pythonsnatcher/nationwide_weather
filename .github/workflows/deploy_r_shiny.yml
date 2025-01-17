@@ -12,25 +12,31 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.x'
-    
-    - name: Create .Renviron and update data
+    - name: Debug - List contents
       run: |
-        echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" > scripts/.Renviron
-        pip install -r requirements.txt  # if you have one
-        python scripts/postgres_ingest.py
+        echo "Current directory:"
+        pwd
+        echo "\nDirectory contents:"
+        ls -la
+        echo "\nScripts directory contents:"
+        ls -la scripts/
+        echo "\nData directory contents:"
+        ls -la data/
         
     - name: Deploy to shinyapps.io
       env:
         SHINYAPPS_TOKEN: ${{ secrets.SHINYAPPS_TOKEN }}
         SHINYAPPS_SECRET: ${{ secrets.SHINYAPPS_SECRET }}
       run: |
+        echo "Starting deployment..."
+        echo "Checking Docker image..."
+        docker pull pythonsnatcher/shiny-app:latest
+        echo "\nInspecting Docker image contents..."
+        docker run --rm pythonsnatcher/shiny-app:latest ls -la /srv/shiny-server/
+        echo "\nStarting deployment..."
         docker run --rm \
           -e SHINYAPPS_TOKEN \
           -e SHINYAPPS_SECRET \
           -v $(pwd)/data:/srv/shiny-server/data \
           pythonsnatcher/shiny-app:latest \
-          R -e 'rsconnect::setAccountInfo(name="tuco-bear", token=Sys.getenv("SHINYAPPS_TOKEN"), secret=Sys.getenv("SHINYAPPS_SECRET")); rsconnect::deployApp("/srv/shiny-server", appName="YOUR_APP_NAME", forceUpdate=TRUE)'
+          R -e 'print("R Session Info:"); sessionInfo(); print("Directory contents:"); list.files("/srv/shiny-server/"); print("Starting deployment..."); rsconnect::setAccountInfo(name="tuco-bear", token=Sys.getenv("SHINYAPPS_TOKEN"), secret=Sys.getenv("SHINYAPPS_SECRET")); rsconnect::deployApp("/srv/shiny-server", appName="YOUR_APP_NAME", forceUpdate=TRUE)'

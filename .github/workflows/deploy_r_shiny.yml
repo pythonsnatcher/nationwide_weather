@@ -4,121 +4,44 @@ on:
   schedule:
     - cron: '0 0 */14 * *'  # Run every 14 days at midnight
   workflow_dispatch:         # Allows manual triggering
-  # push:                      # Optional: add this if you want it to run on pushes
-    # branches: [ main ]       # Specify which branch
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     
-    - name: Set up R
-      uses: r-lib/actions/setup-r@v2
-      
-    - name: Cache R packages
-      uses: actions/cache@v3
-      with:
-        path: |
-          ${{ env.R_LIBS_USER }}
-          !${{ env.R_LIBS_USER }}/pak
-        key: ${{ runner.os }}-r-${{ hashFiles('**/DESCRIPTION') }}
-        restore-keys: |
-          ${{ runner.os }}-r-
-
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y --no-install-recommends \
-          libcurl4-openssl-dev \
-          libssl-dev \
-          libxml2-dev \
-          libpng-dev \
-          libudunits2-dev \
-          libgdal-dev \
-          pandoc
-
-    - name: Install R dependencies
-      if: steps.cache.outputs.cache-hit != 'true'
-      run: |
-        Rscript -e 'install.packages(c(
-          "remotes",
-          "rsconnect",
-          "DBI",
-          "dplyr",
-          "leaflet",
-          "lubridate",
-          "plotly",
-          "RPostgres",
-          "RSQLite",
-          "shinyjs"
-        ), repos="https://cran.rstudio.com")'
-
     - name: Create .Renviron file
       run: |
         echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" > scripts/.Renviron
-        echo "Created .Renviron file with POSTGRES_PASSWORD"
-
-    - name: Wait for existing deployments
-      run: |
-        sleep 30  # Wait 30 seconds for any existing deployments to complete
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+      
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+        
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: ./scripts
+        file: ./scripts/Dockerfile
+        push: true
+        tags: ${{ secrets.DOCKERHUB_USERNAME }}/shiny-app:latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
         
     - name: Deploy to shinyapps.io
       env:
         SHINYAPPS_TOKEN: ${{ secrets.SHINYAPPS_TOKEN }}
         SHINYAPPS_SECRET: ${{ secrets.SHINYAPPS_SECRET }}
       run: |
-        max_retries=3
-        retry_count=0
-
-        echo "SHINYAPPS_TOKEN: ${SHINYAPPS_TOKEN}"
-        echo "SHINYAPPS_SECRET: ${SHINYAPPS_SECRET}"
-
-        # Debug: Check if scripts directory exists
-        echo "Checking for scripts directory..."
-        if [ -d "scripts" ]; then
-          echo "✓ scripts directory found"
-          ls -la scripts/
-        else
-          echo "✗ scripts directory not found"
-          echo "Current directory contents:"
-          ls -la
-        fi
-
-        # Debug: Check if app.r exists
-        echo "Checking for app.r..."
-        if [ -f "scripts/app.r" ]; then
-          echo "✓ app.r found"
-        else
-          echo "✗ app.r not found"
-        fi
-
-        while [ $retry_count -lt $max_retries ]; do
-          echo "Attempting deployment (attempt $((retry_count+1)) of $max_retries)..."
-          if Rscript -e '
-            options(rsconnect.log.level="DEBUG");
-            cat("Setting account info...\n");
-            rsconnect::setAccountInfo(name="tuco-bear", token=Sys.getenv("SHINYAPPS_TOKEN"), secret=Sys.getenv("SHINYAPPS_SECRET")); 
-            cat("Starting deployment...\n");
-            rsconnect::deployApp(
-              appDir = "scripts", 
-              appName = "YOUR_APP_NAME", 
-              appFiles = c("app.r", ".Renviron"),
-              logLevel="verbose",
-              forceUpdate = TRUE
-            )'; then
-            echo "✓ Deployment successful"
-            exit 0
-          else
-            retry_count=$((retry_count+1))
-            if [ $retry_count -lt $max_retries ]; then
-              wait_time=$((30 * retry_count))
-              echo "✗ Deployment failed, waiting $wait_time seconds before retry $retry_count of $max_retries"
-              sleep $wait_time
-            else
-              echo "✗ Deployment failed after $max_retries attempts"
-              exit 1
-            fi
-          fi
-        done
+        docker run --rm \
+          -e SHINYAPPS_TOKEN \
+          -e SHINYAPPS_SECRET \
+          ${{ secrets.DOCKERHUB_USERNAME }}/shiny-app:latest \
+          R -e 'rsconnect::setAccountInfo(name="tuco-bear", token=Sys.getenv("SHINYAPPS_TOKEN"), secret=Sys.getenv("SHINYAPPS_SECRET")); rsconnect::deployApp("/srv/shiny-server", appName="YOUR_APP_NAME", forceUpdate=TRUE)'

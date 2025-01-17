@@ -10,6 +10,15 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     
+    - name: Debug - List contents before build
+      run: |
+        echo "Current directory:"
+        pwd
+        echo "\nDirectory contents:"
+        ls -la
+        echo "\nScripts directory contents:"
+        ls -la scripts/
+        
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
       
@@ -28,3 +37,12 @@ jobs:
         tags: pythonsnatcher/shiny-app:latest
         cache-from: type=gha
         cache-to: type=gha,mode=max
+        
+    - name: Debug - Check Docker image
+      run: |
+        echo "Pulling image to verify contents..."
+        docker pull pythonsnatcher/shiny-app:latest
+        echo "\nInspecting Docker image contents:"
+        docker run --rm pythonsnatcher/shiny-app:latest ls -la /srv/shiny-server/
+        echo "\nChecking R installation:"
+        docker run --rm pythonsnatcher/shiny-app:latest R --version

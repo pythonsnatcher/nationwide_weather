@@ -6,16 +6,16 @@ import tempfile
 from datetime import datetime
 from psycopg2.extras import execute_values
 import os
+from dotenv import load_dotenv
 
-# Set the connection parameters for PostgreSQL
-host = "dpg-ctsr3jpu0jms73bcvhu0-a.oregon-postgres.render.com"
-port = 5432
-user = "admin"
-password = os.getenv('POSTGRES_PASSWORD')  # Get password from environment variable
-dbname = "nationwide_weather"
+
+# Get the API key from environment variables
+API_KEY = os.getenv("XATA_API_KEY")
+
+# Construct the PostgreSQL URL using the API key
+DATABASE_URL = f"postgresql://8sc131:{API_KEY}@eu-west-1.sql.xata.sh/nationwide_weather:main?sslmode=require"
 
 # Set the URL for the SQLite database
-# url = "https://raw.githubusercontent.com/pythonsnatcher/nationwide_weather/5cce1ae87441d5fefdddb0e4d99b05ddde8d457a/data/nationwide_weather.db"
 url = "https://raw.githubusercontent.com/pythonsnatcher/nationwide_weather/main/data/nationwide_weather.db"
 # Download the SQLite database
 response = requests.get(url)
@@ -30,15 +30,8 @@ with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
 sqlite_conn = sqlite3.connect(tmp_file_path)
 sqlite_cursor = sqlite_conn.cursor()
 
-# Connect to PostgreSQL database using explicit connection parameters
-pg_conn = psycopg2.connect(
-    host=host,
-    port=port,
-    user=user,
-    password=password,
-    dbname=dbname,
-    sslmode='require'
-)
+# Connect to PostgreSQL database using provided connection string
+pg_conn = psycopg2.connect(DATABASE_URL, sslmode='require')
 pg_cursor = pg_conn.cursor()
 
 # Fetch the table names from SQLite

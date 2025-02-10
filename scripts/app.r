@@ -23,6 +23,10 @@ library(leaflet)
 library(shinyjs)
 library(RSQLite)
 
+# Remove the terra package if it exists
+if ("terra" %in% installed.packages()) {
+  remove.packages("terra")
+}
 
 # Construct the PostgreSQL URL using the API key from environment variables
 DATABASE_URL <- sprintf(

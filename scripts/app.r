@@ -1,5 +1,6 @@
 options(repos = c(CRAN = "https://cloud.r-project.org"))
 
+# Reinstall packages to ensure they are from CRAN
 install.packages(c(
   "DBI",
   "RPostgres",
@@ -11,8 +12,9 @@ install.packages(c(
   "RSQLite",
   "lubridate",
   "dotenv",
-  "terra" 
-))
+  "terra"
+), repos = "https://cloud.r-project.org")
+
 # Load required libraries
 library(DBI)
 library(RPostgres)

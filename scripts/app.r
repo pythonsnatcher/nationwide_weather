@@ -10,8 +10,7 @@ install.packages(c(
   "leaflet",
   "shinyjs",
   "RSQLite",
-  "lubridate",
-  "terra"
+  "lubridate"
 ), repos = "https://cloud.r-project.org")
 
 # Load required libraries

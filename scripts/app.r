@@ -11,7 +11,6 @@ install.packages(c(
   "shinyjs",
   "RSQLite",
   "lubridate",
-  "dotenv",
   "terra"
 ), repos = "https://cloud.r-project.org")
 
@@ -24,7 +23,6 @@ library(dplyr)
 library(leaflet)
 library(shinyjs)
 library(RSQLite)
-library(dotenv)
 
 
 # Construct the PostgreSQL URL using the API key from environment variables

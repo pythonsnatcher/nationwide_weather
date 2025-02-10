@@ -9,7 +9,8 @@ install.packages(c(
   "leaflet",
   "shinyjs",
   "RSQLite",
-  "lubridate"
+  "lubridate",
+  "dotenv"
 ))
 # Load required libraries
 library(DBI)
@@ -20,16 +21,33 @@ library(dplyr)
 library(leaflet)
 library(shinyjs)
 library(RSQLite)
+library(dotenv)
+
+
+# Construct the PostgreSQL URL using the API key from environment variables
+DATABASE_URL <- sprintf(
+  "postgresql://8sc131:%s@eu-west-1.sql.xata.sh/nationwide_weather:main?sslmode=require",
+  Sys.getenv("XATA_API_KEY")
+)
 
 # Data loading function to query from PostgreSQL
 query_weather_data <- function() {
-  # Set the connection string with explicit password
-  conn <- dbConnect(RPostgres::Postgres(),
-                    host = "dpg-ctsr3jpu0jms73bcvhu0-a.oregon-postgres.render.com",
-                    port = 5432,
-                    user = "admin",
-                    password = Sys.getenv('POSTGRES_PASSWORD'),
-                    dbname = "nationwide_weather")
+  # Set up connection using environment variables
+  conn <- dbConnect(
+    RPostgres::Postgres(),
+    host = "eu-west-1.sql.xata.sh",
+    port = 5432,
+    user = "8sc131",
+    password = Sys.getenv("XATA_API_KEY"),
+    dbname = "nationwide_weather:main",
+    sslmode = "require"
+  )
+
+  # ... existing code ...
+
+
+
+  
   # Query to fetch the weather data from the PostgreSQL database
   query <- "
     SELECT

@@ -10,7 +10,8 @@ install.packages(c(
   "shinyjs",
   "RSQLite",
   "lubridate",
-  "dotenv"
+  "dotenv",
+  "terra" 
 ))
 # Load required libraries
 library(DBI)

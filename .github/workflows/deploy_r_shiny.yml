@@ -44,4 +44,4 @@ jobs:
           -v $(pwd)/data:/srv/shiny-server/data \
           -v $(pwd)/scripts/.Renviron:/srv/shiny-server/.Renviron \
           pythonsnatcher/shiny-app:latest \
-          R -e 'print("R Session Info:"); sessionInfo(); print("Directory contents:"); list.files("/srv/shiny-server/"); print("Starting deployment..."); rsconnect::setAccountInfo(name="tuco-bear", token=Sys.getenv("SHINYAPPS_TOKEN"), secret=Sys.getenv("SHINYAPPS_SECRET")); rsconnect::deployApp("/srv/shiny-server", appName="YOUR_APP_NAME", forceUpdate=TRUE)'
+          R -e 'print("R Session Info:"); sessionInfo(); print("Directory contents:"); list.files("/srv/shiny-server/"); print("Starting deployment..."); rsconnect::setAccountInfo(name="tuco-bear", token=Sys.getenv("SHINYAPPS_TOKEN"), secret=Sys.getenv("SHINYAPPS_SECRET")); rsconnect::deployApp("/srv/shiny-server", appName="YOUR_APP_NAME", forceUpdate=TRUE, exclude=c("terra"))'

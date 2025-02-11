@@ -22,13 +22,11 @@ RUN R -e 'install.packages(c(\
     "plotly", \
     "RPostgres", \
     "RSQLite", \
-    "shinyjs" \
+    "shinyjs", \
+    "terra" \
     ), repos="https://cran.rstudio.com")'
-
     
-RUN R -e 'if ("terra" %in% installed.packages()) remove.packages("terra")'
 
-    
 
 # Copy only app.r
 COPY app.r /srv/shiny-server/

@@ -25,7 +25,7 @@ RUN R -e 'install.packages(c(\
     "shinyjs" \
     ), repos="https://cran.rstudio.com")'
 
-// Remove the terra package if it was installed
+    
 RUN R -e 'if ("terra" %in% installed.packages()) remove.packages("terra")'
 
     

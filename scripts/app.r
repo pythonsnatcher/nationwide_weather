@@ -1,17 +1,18 @@
 options(repos = c(CRAN = "https://cloud.r-project.org"))
 
 # Reinstall packages to ensure they are from CRAN
-install.packages(c(
-  "DBI",
-  "RPostgres",
-  "shiny",
-  "plotly",
-  "dplyr",
-  "leaflet",
-  "shinyjs",
-  "RSQLite",
-  "lubridate"
-), repos = "https://cloud.r-project.org")
+# THIS IS TEMPORARILY COMMENTED OUT TO SEE IF IT WORKS, THIS IS ADVICE FROM CHATGPT SO BEWARE. STARTING FROM HERE AND FINISHING AT LINE 16, BEFORE THE 'LOAD' SECION OF CODE
+#install.packages(c(
+  #"DBI",
+  #"RPostgres",
+  #"shiny",
+  #"plotly",
+  #"dplyr",
+  #"leaflet",
+  #"shinyjs",
+  #"RSQLite",
+  #"lubridate"
+#), repos = "https://cloud.r-project.org")
 
 # Load required libraries
 library(DBI)
@@ -24,9 +25,10 @@ library(shinyjs)
 library(RSQLite)
 
 # Remove the terra package if it exists
-if ("terra" %in% installed.packages()) {
-  remove.packages("terra")
-}
+# THIS NEXT CHUNK ABOUT REMOVE TERRA IS TEMPORARILY COMMENTED OUT, BEWARE THIS IS ADVICE FROM CHATGPT
+#if ("terra" %in% installed.packages()) {
+#  remove.packages("terra")
+#}
 
 # Construct the PostgreSQL URL using the API key from environment variables
 DATABASE_URL <- sprintf(

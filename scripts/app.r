@@ -20,7 +20,7 @@ library(RPostgres)
 library(shiny)
 library(plotly)
 library(dplyr)
-library(leaflet)
+#library(leaflet)
 library(shinyjs)
 library(RSQLite)
 
@@ -190,7 +190,9 @@ ui <- fluidPage(
       actionButton("apply_filter", "Reset Filter", class = "btn btn-primary", style = "margin-top: 20px;"),
 
       h4("Location Map", style = "margin-top: 30px;"),
-      leafletOutput("map", height = "300px"),
+      #leafletOutput("map", height = "300px"),
+      #TEMPORARILY CHANING LEFLETOUTPUT TO PLOTLY OUTPUT
+      plotlyOutput("map", height = "300px"),
       width = 3
     ),
 
@@ -608,14 +610,29 @@ server <- function(input, output, session) {
         showlegend = FALSE
       )
   })
+# TEMPORARILY CHANGING THIS CHUNK AS SHINYAPPS.IO HAS AN ISSUE WITH 'LEAFLET'
+#  output$map <- renderLeaflet({
+ #   filtered_data <- get_filtered_data()
+  #  leaflet(data = filtered_data) %>%
+   #   addTiles() %>%
+    #  addCircleMarkers(~longitude, ~latitude, popup = ~location_name, radius = 8, color = "blue", opacity = 0.7, fillOpacity = 0.6)
+#  })
+ output$map <- renderPlotly({
+  filtered_data <- get_filtered_data()
 
-  output$map <- renderLeaflet({
-    filtered_data <- get_filtered_data()
-    leaflet(data = filtered_data) %>%
-      addTiles() %>%
-      addCircleMarkers(~longitude, ~latitude, popup = ~location_name, radius = 8, color = "blue", opacity = 0.7, fillOpacity = 0.6)
-  })
+  plot_ly(
+    data = filtered_data,
+    x = ~longitude,
+    y = ~latitude,
+    type = "scatter",
+    mode = "markers",
+    text = ~location_name,
+    hoverinfo = "text",
+    marker = list(size = 10, color = "blue")
+  )
+})
 
+  
   observeEvent(input$apply_filter, {
     updateSliderInput(session, "date_range", value = c(min(df$time_of_search), max(df$time_of_search)))
     updateSelectInput(session, "location_filter", selected = "All")

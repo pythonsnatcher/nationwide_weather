@@ -1,18 +1,17 @@
 options(repos = c(CRAN = "https://cloud.r-project.org"))
 
 # Reinstall packages to ensure they are from CRAN
-# THIS IS TEMPORARILY COMMENTED OUT TO SEE IF IT WORKS, THIS IS ADVICE FROM CHATGPT SO BEWARE. STARTING FROM HERE AND FINISHING AT LINE 16, BEFORE THE 'LOAD' SECION OF CODE
-#install.packages(c(
-  #"DBI",
-  #"RPostgres",
-  #"shiny",
-  #"plotly",
-  #"dplyr",
-  #"leaflet",
-  #"shinyjs",
-  #"RSQLite",
-  #"lubridate"
-#), repos = "https://cloud.r-project.org")
+install.packages(c(
+  "DBI",
+  "RPostgres",
+  "shiny",
+  "plotly",
+  "dplyr",
+  "leaflet",
+  "shinyjs",
+  "RSQLite",
+  "lubridate"
+), repos = "https://cloud.r-project.org")
 
 # Load required libraries
 library(DBI)
@@ -20,15 +19,14 @@ library(RPostgres)
 library(shiny)
 library(plotly)
 library(dplyr)
-#library(leaflet)
+library(leaflet)
 library(shinyjs)
 library(RSQLite)
 
 # Remove the terra package if it exists
-# THIS NEXT CHUNK ABOUT REMOVE TERRA IS TEMPORARILY COMMENTED OUT, BEWARE THIS IS ADVICE FROM CHATGPT
-#if ("terra" %in% installed.packages()) {
-#  remove.packages("terra")
-#}
+if ("terra" %in% installed.packages()) {
+  remove.packages("terra")
+}
 
 # Construct the PostgreSQL URL using the API key from environment variables
 DATABASE_URL <- sprintf(
@@ -190,9 +188,7 @@ ui <- fluidPage(
       actionButton("apply_filter", "Reset Filter", class = "btn btn-primary", style = "margin-top: 20px;"),
 
       h4("Location Map", style = "margin-top: 30px;"),
-      #leafletOutput("map", height = "300px"),
-      #TEMPORARILY CHANING LEFLETOUTPUT TO PLOTLY OUTPUT
-      plotlyOutput("map", height = "300px"),
+      leafletOutput("map", height = "300px"),
       width = 3
     ),
 
@@ -610,29 +606,14 @@ server <- function(input, output, session) {
         showlegend = FALSE
       )
   })
-# TEMPORARILY CHANGING THIS CHUNK AS SHINYAPPS.IO HAS AN ISSUE WITH 'LEAFLET'
-#  output$map <- renderLeaflet({
- #   filtered_data <- get_filtered_data()
-  #  leaflet(data = filtered_data) %>%
-   #   addTiles() %>%
-    #  addCircleMarkers(~longitude, ~latitude, popup = ~location_name, radius = 8, color = "blue", opacity = 0.7, fillOpacity = 0.6)
-#  })
- output$map <- renderPlotly({
-  filtered_data <- get_filtered_data()
 
-  plot_ly(
-    data = filtered_data,
-    x = ~longitude,
-    y = ~latitude,
-    type = "scatter",
-    mode = "markers",
-    text = ~location_name,
-    hoverinfo = "text",
-    marker = list(size = 10, color = "blue")
-  )
-})
+  output$map <- renderLeaflet({
+    filtered_data <- get_filtered_data()
+    leaflet(data = filtered_data) %>%
+      addTiles() %>%
+      addCircleMarkers(~longitude, ~latitude, popup = ~location_name, radius = 8, color = "blue", opacity = 0.7, fillOpacity = 0.6)
+  })
 
-  
   observeEvent(input$apply_filter, {
     updateSliderInput(session, "date_range", value = c(min(df$time_of_search), max(df$time_of_search)))
     updateSelectInput(session, "location_filter", selected = "All")
